@@ -3,8 +3,6 @@ name: Build Windows installer
 on:
   push:
     branches: [main]
-    paths:
-      - classpoints-source-v2.13.16-public-source-fixed.zip
   workflow_dispatch:
 
 permissions:
