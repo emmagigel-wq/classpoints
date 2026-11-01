@@ -1,0 +1,60 @@
+name: Build Windows installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up 64-bit Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          architecture: "x64"
+          cache: "pip"
+
+      - name: Install build dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade PyInstaller PyQt5 openpyxl python-docx lxml segno
+
+      - name: Normalize PowerShell script encoding
+        shell: pwsh
+        run: |
+          python _tools/ensure_bom.py --fix
+
+      - name: Build application and installer
+        shell: pwsh
+        run: |
+          $python = (Get-Command python).Source
+          powershell -NoProfile -ExecutionPolicy Bypass -File packaging/build_installer.ps1 -Python $python
+          if ($LASTEXITCODE -ne 0) { throw "Installer build failed: $LASTEXITCODE" }
+
+      - name: Verify installer output
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem -Path dist -Filter "班级积分系统-安装程序-v*.exe" -File
+          if (-not $files) { throw "Installer EXE was not produced." }
+          $files | ForEach-Object {
+            Get-FileHash -Algorithm SHA256 $_.FullName | Format-List
+            Write-Host ("Installer: {0} ({1:N1} MB)" -f $_.FullName, ($_.Length / 1MB))
+          }
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClassPoints-Windows-Installer-v2.13.16
+          path: dist/班级积分系统-安装程序-v*.exe
+          if-no-files-found: error
+          retention-days: 30
