@@ -31,7 +31,7 @@ jobs:
           if (-not (Test-Path (Join-Path $sourceRoot "packaging/build_installer.ps1"))) {
             throw "The uploaded ZIP does not contain the expected ClassPoints source tree."
           }
-          robocopy $sourceRoot $env:GITHUB_WORKSPACE /E /COPY:DAT /R:2 /W:2 /XD .git
+          robocopy $sourceRoot $env:GITHUB_WORKSPACE /E /COPY:DAT /R:2 /W:2 /XD .git /XF build-windows.yml
           if ($LASTEXITCODE -gt 7) { throw "Source extraction copy failed: $LASTEXITCODE" }
 
       - name: Publish unpacked source to repository
@@ -41,7 +41,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git reset -- "classpoints-source-v2.13.16-public-source-fixed.zip"
-          if (-not (git diff --cached --quiet)) {
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
             git commit -m "Publish ClassPoints v2.13.16 source"
             git push origin HEAD:main
           }
