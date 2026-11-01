@@ -29,8 +29,10 @@ if ($Version) { $bpArgs += @('--version', $Version) }
 & $Python @bpArgs
 if ($LASTEXITCODE -ne 0) { throw "build_payload 失败: $LASTEXITCODE" }
 
-# 3) 安装器 onefile（资源：payload.zip/manifest.json/Uninstall.exe/app.ico）
-& $Python -m PyInstaller --noconfirm --clean packaging\installer.spec
+# 3) 安装器 onefile。
+# 关键：不能使用默认 build 工作目录，因为 build\installer 中存放着上一步生成的 payload.zip。
+# 将 PyInstaller 的临时工作目录隔离，--clean 就不会清掉安装器资源。
+& $Python -m PyInstaller --noconfirm --clean --workpath build\pyinstaller-installer packaging\installer.spec
 if ($LASTEXITCODE -ne 0) { throw "pyinstaller(installer) 失败: $LASTEXITCODE" }
 
 if (-not $Version) {
