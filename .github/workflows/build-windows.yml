@@ -13,8 +13,24 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
-      - name: Check out source
+      - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Expand uploaded source archive
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:GITHUB_WORKSPACE "classpoints-source-v2.13.16-public-source-fixed.zip"
+          if (-not (Test-Path $archive)) {
+            throw "Source archive is missing: classpoints-source-v2.13.16-public-source-fixed.zip"
+          }
+          $extractRoot = Join-Path $env:RUNNER_TEMP "classpoints-source-extract"
+          Expand-Archive -LiteralPath $archive -DestinationPath $extractRoot -Force
+          $sourceRoot = Join-Path $extractRoot "classpoints-source"
+          if (-not (Test-Path (Join-Path $sourceRoot "packaging/build_installer.ps1"))) {
+            throw "The uploaded ZIP does not contain the expected ClassPoints source tree."
+          }
+          robocopy $sourceRoot $env:GITHUB_WORKSPACE /E /COPY:DAT /R:2 /W:2 /XD .git
+          if ($LASTEXITCODE -gt 7) { throw "Source extraction copy failed: $LASTEXITCODE" }
 
       - name: Set up 64-bit Python 3.14
         uses: actions/setup-python@v5
