@@ -63,6 +63,8 @@ jobs:
 
       - name: Normalize PowerShell script encoding
         shell: pwsh
+        env:
+          PYTHONIOENCODING: utf-8
         run: |
           python _tools/ensure_bom.py --fix
 
