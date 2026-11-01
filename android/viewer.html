@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eef2f8">
+<title>班级积分 · 手机端</title>
+<style>
+  :root {
+    --bg: #eef2f8; --card: #ffffff; --card2: #f7f9fc; --line: #e4e7ec;
+    --text: #101828; --muted: #667085; --accent: #4c6ef5; --accent2: #3b5bdb;
+    --ok: #12b76a; --warn: #d97706; --bad: #f04438; --radius: 14px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* 用 hidden 属性控制显示的元素（弹层是 flex/block）必须压过各自 display */
+  [hidden] { display: none !important; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+  body { padding: 14px 12px calc(20px + env(safe-area-inset-bottom)); }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .head { padding: 6px 4px 10px; }
+  .brand { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted);
+    box-shadow: 0 0 0 4px rgba(102,112,133,.14); transition: background .2s, box-shadow .2s; }
+  /* 顶栏状态点：绿=在线 / 黄=离线待同步 / 红=口令失效 */
+  .dot.on { background: var(--ok); box-shadow: 0 0 0 4px rgba(18,183,106,.16); }
+  .dot.off { background: var(--warn); box-shadow: 0 0 0 4px rgba(217,119,6,.16); }
+  .dot.bad { background: var(--bad); box-shadow: 0 0 0 4px rgba(240,68,56,.16); }
+  .brand .grow { flex: 1 1 auto; min-width: 0; }
+  .topbtns { display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
+  .topbtns button { padding: 6px 10px; font-size: 12px; border-radius: 999px; }
+  .fp { display: inline-block; font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11px; color: var(--muted); letter-spacing: .8px; margin-top: 4px; }
+  h1 { font-size: 20px; margin: 0; letter-spacing: .5px; }
+  .sub { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+  .netbar { margin-top: 10px; border-radius: 10px; padding: 8px 12px; font-size: 13px;
+    font-weight: 600; border: 1px solid transparent; cursor: pointer; user-select: none; }
+  .netbar.ok { background: rgba(18,183,106,.12); color: var(--ok); border-color: rgba(18,183,106,.35); }
+  .netbar.warn { background: rgba(217,119,6,.12); color: var(--warn); border-color: rgba(217,119,6,.35); }
+  .netbar.bad { background: rgba(240,68,56,.13); color: var(--bad); border-color: rgba(240,68,56,.35); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; margin-top: 12px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--muted); font-weight: 600; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 5px; }
+  input, select { width: 100%; background: #f2f5fa; color: var(--text); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 12px; font-size: 15px; outline: none; }
+  input:focus, select:focus { border-color: var(--accent); }
+  .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+  button { appearance: none; border: 1px solid var(--line); background: var(--card2);
+    color: var(--text); border-radius: 10px; padding: 10px 14px; font-size: 14px;
+    font-weight: 600; cursor: pointer; }
+  button:active { transform: scale(.97); }
+  button.primary { background: linear-gradient(180deg, var(--accent), var(--accent2));
+    border-color: transparent; color: #eef2f8; }
+  button.danger { background: rgba(240,68,56,.14); border-color: rgba(240,68,56,.4);
+    color: #b42318; }
+  .hint { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 8px 0 0; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 13px;
+    background: rgba(76,110,245,.1); border: 1px solid rgba(76,110,245,.3); }
+  .msg.warn { background: rgba(217,119,6,.1); border-color: rgba(217,119,6,.35); color: #92400e; }
+  .msg.err { background: rgba(240,68,56,.12); border-color: rgba(240,68,56,.35); color: #b42318; }
+  .board-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .board-head h2 { margin: 0 0 10px; }
+  .rows { display: flex; flex-direction: column; gap: 8px; width: max-content; min-width: 100%; }
+  /* 座次表：每排一个 grid，列由「座位轨道 + 过道窄轨」拼出来（见 trackTemplate）。
+     列多时整张表横向滚动，绝不把多出来的列折到下一排。 */
+  .board { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px; }
+  .seatrow { display: grid; gap: 6px; align-items: stretch; }
+  .aisle { min-width: 12px; }
+  .seat { background: var(--card2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 8px 6px; min-width: 52px; min-height: 102px; display: flex;
+    flex-direction: column; gap: 4px; align-items: stretch; }
+  .podium { background: linear-gradient(180deg, var(--card2), #eef2f8);
+    border: 1px dashed var(--line); border-radius: 10px; padding: 9px 0; text-align: center;
+    font-size: 12px; font-weight: 700; letter-spacing: 8px; color: var(--muted); }
+  .seat.pending { border-color: rgba(217,119,6,.55); box-shadow: inset 0 0 0 1px rgba(217,119,6,.15); }
+  .seat.empty-seat { background: transparent; border-style: dashed; opacity: .28; }
+  .seat-name { font-size: 13px; font-weight: 700; text-align: center; line-height: 1.25;
+    word-break: break-all; }
+  .chip { display: inline-block; margin-left: 4px; font-size: 10px; font-weight: 600;
+    color: var(--warn); background: rgba(217,119,6,.14); border-radius: 999px;
+    padding: 1px 6px; vertical-align: 1px; }
+  .seat-pts { font-size: 24px; font-weight: 800; text-align: center; color: var(--accent);
+    line-height: 1.1; }
+  .seat-ops { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: auto; }
+  .seat-ops button { padding: 7px 0; font-size: 13px; border-radius: 8px; }
+  .seat-ops button.minus { color: #b42318; background: rgba(240,68,56,.1); }
+  .seat-ops button.undo { grid-column: 1 / -1; padding: 6px 0; font-size: 12px; color: var(--muted); }
+  .empty { color: var(--muted); font-size: 13px; padding: 18px 6px; text-align: center; }
+  .form { display: grid; grid-template-columns: 1fr 64px 64px auto; gap: 8px; align-items: center; }
+  .form + h2 { margin-top: 18px; }
+  .form select { grid-column: 1 / 3; }
+  footer { color: #98a2b3; font-size: 11px; text-align: center; margin-top: 18px; line-height: 1.7; }
+  @media (max-width: 380px) {
+    .form { grid-template-columns: 1fr 56px 56px; }
+    .form button { grid-column: 1 / -1; }
+  }
+
+  /* ---- 通知：抽屉 / 横幅 / 全屏提醒 ---- */
+  .drawer-mask { position: fixed; inset: 0; background: rgba(3,7,18,.6); z-index: 40; }
+  .drawer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41;
+    background: var(--card); border-top: 1px solid var(--line);
+    border-top-left-radius: 18px; border-top-right-radius: 18px;
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
+    max-height: 88vh; overflow-y: auto; }
+  .drawer h2 { font-size: 15px; margin: 0 0 6px; color: var(--text); }
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .modes label { margin: 0; padding: 10px 6px; text-align: center; border: 1px solid var(--line);
+    border-radius: 10px; background: #f2f5fa; color: var(--text); font-size: 13px;
+    font-weight: 600; cursor: pointer; }
+  .modes input { display: none; }
+  .modes label.sel { border-color: var(--accent); background: rgba(76,110,245,.12);
+    color: var(--accent); }
+  .targets { display: flex; flex-wrap: wrap; gap: 8px; }
+  .targets label { display: inline-flex; align-items: center; gap: 6px; margin: 0;
+    padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px;
+    color: var(--text); font-size: 13px; white-space: nowrap; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; }
+  .targets label input { flex: 0 0 auto; width: 16px; height: 16px; margin: 0; }
+  textarea { width: 100%; background: #f2f5fa; color: var(--text); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 12px; font-size: 15px; outline: none; resize: vertical;
+    min-height: 84px; font-family: inherit; }
+  textarea:focus { border-color: var(--accent); }
+  .banner { position: fixed; top: calc(10px + env(safe-area-inset-top)); left: 12px; right: 12px;
+    z-index: 60; background: var(--card2); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; box-shadow: 0 12px 34px rgba(0,0,0,.4); font-size: 14px;
+    line-height: 1.5; cursor: pointer; }
+  .banner .b-title { font-weight: 700; }
+  .banner .b-tag { font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    color: var(--accent); margin-right: 6px; }
+  .overlay { position: fixed; inset: 0; z-index: 70; background: #eef2f8; display: flex;
+    flex-direction: column; justify-content: center; align-items: center; gap: 16px;
+    padding: 28px 20px calc(28px + env(safe-area-inset-bottom)); text-align: center; }
+  .overlay.severe { background: radial-gradient(circle at 50% 0%, #fffaeb, #fff7ed 72%); }
+  .overlay.urgent { background: radial-gradient(circle at 50% 0%, #fef3f2, #1a0b0b 72%); }
+  .overlay .o-tag { font-size: 12px; letter-spacing: 3px; font-weight: 800; color: var(--bad); }
+  .overlay h2 { font-size: 30px; margin: 0; line-height: 1.3; word-break: break-word; }
+  .overlay p { font-size: 17px; line-height: 1.7; margin: 0; white-space: pre-wrap;
+    max-height: 46vh; overflow-y: auto; }
+  .overlay small { color: var(--muted); font-size: 12px; }
+  .overlay .o-file { margin-top: 4px; }
+  .warnbox { border: 1px solid rgba(240,68,56,.45); background: rgba(240,68,56,.1);
+    border-radius: 12px; padding: 12px; margin-top: 12px; font-size: 13px; line-height: 1.7;
+    color: #b42318; }
+  .fpset { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+    letter-spacing: 1px; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .5px;
+    border-radius: 999px; padding: 2px 7px; background: rgba(76,110,245,.16); color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div class="brand">
+      <span class="dot" id="dot"></span>
+      <div class="grow">
+        <h1 id="className">班级积分</h1>
+        <span class="fp" id="fp" hidden></span>
+      </div>
+      <div class="topbtns">
+        <button id="btnNotify" type="button" hidden onclick="openNotify()">通知</button>
+        <button id="btnChange" type="button" hidden onclick="openChange()">更换地址</button>
+      </div>
+    </div>
+    <p class="sub" id="sub">正在连接…</p>
+    <div id="netbar" class="netbar ok" role="status" aria-live="polite"
+         title="点一下立即同步" onclick="syncNow()">正在连接…</div>
+  </header>
+
+  <div id="msg" class="msg" hidden></div>
+
+  <section id="setup" class="card" hidden>
+    <h2>连接教师电脑</h2>
+    <label for="addr">地址</label>
+    <input id="addr" placeholder="http://192.168.1.5:8765" autocapitalize="off"
+           autocomplete="off" spellcheck="false" inputmode="url">
+    <label for="token">口令</label>
+    <input id="token" placeholder="8 位同步口令" autocapitalize="off"
+           autocomplete="off" spellcheck="false">
+    <div class="row">
+      <button id="connect" class="primary" onclick="connect()">连接</button>
+      <span id="status" class="hint"></span>
+    </div>
+    <div id="fpWarn" class="warnbox" hidden>
+      <div>这台电脑的班级指纹和上次不同，确认是否同一个班。</div>
+      <p class="hint">上次：<span id="fpOld" class="fpset"></span><br>
+         本次：<span id="fpNew" class="fpset"></span></p>
+      <div class="row">
+        <button class="primary" onclick="confirmFingerprint()">仍然连接</button>
+        <button onclick="cancelFingerprint()">取消</button>
+      </div>
+    </div>
+    <p class="hint">口令在电脑端「设置 → 多端同步」里查看。连过一次后手机会记住；
+      断网时仍可加分/扣分/撤销，恢复网络后自动补传。</p>
+  </section>
+
+  <section class="card board-card">
+    <div class="board-head">
+      <h2>点座位加分 · 再点减分</h2>
+      <span class="hint">每 5 秒自动刷新</span>
+    </div>
+    <div id="board" class="board">
+      <div id="rows" class="rows"></div>
+      <div id="empty" class="empty" hidden>还没有学生：先在电脑端导入名单，或在下面添加。</div>
+    </div>
+  </section>
+
+  <section id="manage" class="card" hidden>
+    <h2>添加学生</h2>
+    <div class="form">
+      <input id="nName" placeholder="姓名" maxlength="12" autocomplete="off">
+      <input id="nRow" type="number" min="1" placeholder="排" inputmode="numeric">
+      <input id="nCol" type="number" min="1" placeholder="列" inputmode="numeric">
+      <button class="primary" onclick="addStudent()">添加学生</button>
+    </div>
+    <h2>删除学生</h2>
+    <div class="form">
+      <select id="delSel"></select>
+      <button class="danger" onclick="removeStudent()">删除学生</button>
+    </div>
+    <p class="hint">增删学生需要联网；离线时只排队加分/扣分/撤销。</p>
+  </section>
+
+  <div id="changeWrap" class="card" hidden>
+    <h2>更换服务器</h2>
+    <p class="hint">当前：<span id="curAddr"></span></p>
+    <p class="hint">班级指纹：<span id="curFp" class="fpset">—</span></p>
+    <div class="row">
+      <button onclick="changeAddr()">更换地址 / 口令</button>
+      <button onclick="closeChange()">收起</button>
+    </div>
+  </div>
+
+  <div id="banner" class="banner" hidden onclick="openNotifyDetail()">
+    <div><span class="b-tag" id="bTag">通知</span><span class="b-title" id="bTitle"></span></div>
+    <div class="hint" id="bText" style="margin:2px 0 0"></div>
+  </div>
+
+  <div id="notifyMask" class="drawer-mask" hidden onclick="closeNotify()"></div>
+  <section id="notifyDrawer" class="drawer" hidden aria-label="发送通知">
+    <h2>发送通知</h2>
+    <label>收件人（可多选）</label>
+    <div id="nTargets" class="targets">
+      <label><input type="checkbox" value="*" checked> 全部设备</label>
+    </div>
+    <label>提醒程度</label>
+    <div class="modes" id="nModes">
+      <label class="sel" data-mode="mild"><input type="radio" name="nmode" value="mild" checked>轻微</label>
+      <label data-mode="severe"><input type="radio" name="nmode" value="severe">严重</label>
+      <label data-mode="urgent"><input type="radio" name="nmode" value="urgent">紧急</label>
+    </div>
+    <label for="nTitle">标题</label>
+    <input id="nTitle" maxlength="60" placeholder="例如：明天带数学作业">
+    <label for="nText">正文</label>
+    <textarea id="nText" maxlength="2000" placeholder="要通知的内容…"></textarea>
+    <label for="nFile">附带文件（最大 8MB）</label>
+    <input id="nFile" type="file">
+    <p class="hint" id="nFileHint"></p>
+    <div class="row">
+      <button id="nSend" class="primary" onclick="sendNotify()">发送</button>
+      <button onclick="closeNotify()">取消</button>
+      <span class="hint" id="nStatus"></span>
+    </div>
+    <p class="hint">轻微＝顶部横幅 3 秒；严重＝全屏提示；紧急＝全屏 + 响铃 + 震动。</p>
+  </section>
+
+  <section id="notifyScreen" class="overlay" hidden>
+    <div class="o-tag" id="oScreenTag">通知</div>
+    <h2 id="oScreenTitle"></h2>
+    <p id="oScreenText"></p>
+    <div class="o-file" id="oScreenFile"></div>
+    <small id="oScreenFrom"></small>
+    <button class="primary" onclick="dismissOverlay()">知道了</button>
+  </section>
+
+  <footer>班级积分 · 多端同步 v2.7<br>离线可改，联网自动同步</footer>
+</div>
+
+<script id="cp-core">
+/* ==== OFFLINE CORE START ==== */
+/* 离线队列核心：不依赖 DOM，可被 Node 直接抽出来跑单元测试。 */
+var CP = (function () {
+  'use strict';
+
+  var QUEUE_KEY = 'classpointsQueueV1';
+var OPS_KEY = 'classpointsOpsV1';   // 本地记录副本（多端互相同步用）
+var MAX_OPS = 800;
+  var STATE_KEY = 'classpointsStateV1';
+  var MAX_QUEUE = 500;
+  var OP_TYPES = { score: 1, undo: 1 };
+
+  function uuid() {
+    try {
+      if (typeof crypto !== 'undefined' && crypto && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+    } catch (e) { /* 很老的浏览器没有 randomUUID，退回手搓 */ }
+    var s = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = Math.random() * 16 | 0;
+      var v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+    return s;
+  }
+
+  function storage() {
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage) return localStorage;
+    } catch (e) { /* 隐私模式可能直接抛错 */ }
+    return null;
+  }
+
+  function readJSON(key, fallback) {
+    var st = storage();
+    if (!st) return fallback;
+    try {
+      var raw = st.getItem(key);
+      if (!raw) return fallback;
+      var data = JSON.parse(raw);
+      return data === null || data === undefined ? fallback : data;
+    } catch (e) { return fallback; }
+  }
+
+  function writeJSON(key, value) {
+    var st = storage();
+    if (!st) return false;
+    try { st.setItem(key, JSON.stringify(value)); return true; }
+    catch (e) { return false; }
+  }
+
+  function normAddr(addr) { return String(addr || '').trim().toLowerCase().replace(/\/+$/, ''); }
+  function queueKey(addr) { return QUEUE_KEY + '|' + normAddr(addr); }
+  function stateKey(addr) { return STATE_KEY + '|' + normAddr(addr); }
+
+  /* ---- 状态缓存：只用于断网时先把界面画出来，联网后一律以服务端为准 ---- */
+
+  function loadState(addr) {
+    var st = readJSON(stateKey(addr), null);
+    if (!st || typeof st !== 'object' || !Array.isArray(st.students)) return null;
+    return st;
+  }
+
+  function saveState(addr, state) {
+    if (!state || !Array.isArray(state.students)) return false;
+    // 只缓存渲染要用的字段，避免 localStorage 被历史记录撑爆
+    var slim = {
+      version: state.version || 1,
+      className: state.className || '班级',
+      layout: state.layout || { rows: 1, cols: 1 },
+      students: state.students,
+      leaderboard: state.leaderboard || [],
+      recent: (state.recent || []).slice(-100),
+      ts: state.ts || Math.floor(Date.now() / 1000),
+      cachedAt: Date.now()
+    };
+    return writeJSON(stateKey(addr), slim);
+  }
+
+  /* ---- 队列 ---- */
+
+  function isOp(op) {
+    return !!op && typeof op === 'object' &&
+      typeof op.opId === 'string' && op.opId.length > 0 &&
+      !!OP_TYPES[op.type] &&
+      typeof op.student_id === 'string' && op.student_id.length > 0;
+  }
+
+  function normalizeOp(op) {
+    if (!op || typeof op !== 'object') return null;
+    if (!OP_TYPES[op.type]) return null;
+    var sid = String(op.student_id || '').trim();
+    if (!sid) return null;
+    var item = {
+      opId: (typeof op.opId === 'string' && op.opId) ? op.opId : uuid(),
+      type: op.type,
+      student_id: sid,
+      ts: Number(op.ts) || Date.now(),
+      tries: 0
+    };
+    if (op.type === 'score') {
+      var delta = parseInt(op.delta, 10);
+      if (!delta) return null;
+      item.delta = delta;
+      item.reason = String(op.reason || (delta > 0 ? '手机加分' : '手机扣分')).slice(0, 200);
+    } else {
+      item.delta = parseInt(op.delta, 10) || 0;
+      if (op.expect_seq !== undefined && op.expect_seq !== null && op.expect_seq !== '') {
+        item.expect_seq = parseInt(op.expect_seq, 10) || 0;
+      }
+    }
+    if (op.name) item.name = String(op.name).slice(0, 40);
+    return item;
+  }
+
+  function loadQueue(addr) {
+    var q = readJSON(queueKey(addr), []);
+    if (!Array.isArray(q)) return [];
+    return q.filter(isOp);
+  }
+
+  function saveQueue(addr, queue) {
+    return writeJSON(queueKey(addr), (queue || []).filter(isOp));
+  }
+
+  function appendOp(queue, op) {
+    var item = normalizeOp(op);
+    if (!item) return null;
+    queue.push(item);
+    if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
+    return item;
+  }
+
+  function enqueue(addr, op) {
+    var queue = loadQueue(addr);
+    appendOp(queue, op);
+    saveQueue(addr, queue);
+    return queue;
+  }
+
+  function removeOp(queue, opId) {
+    for (var i = 0; i < queue.length; i++) {
+      if (queue[i].opId === opId) return queue.splice(i, 1)[0];
+    }
+    return null;
+  }
+
+  function lastQueuedFor(queue, sid) {
+    for (var i = queue.length - 1; i >= 0; i--) {
+      if (queue[i].student_id === sid) return queue[i];
+    }
+    return null;
+  }
+
+  function cancelLastQueuedScore(queue, sid) {
+    for (var i = queue.length - 1; i >= 0; i--) {
+      if (queue[i].student_id !== sid) continue;
+      if (queue[i].type !== 'score') return null;   // 最后一条是撤销，不能乱取消
+      return queue.splice(i, 1)[0];
+    }
+    return null;
+  }
+
+  function pendingByStudent(queue) {
+    var map = {};
+    (queue || []).forEach(function (op) {
+      map[op.student_id] = (map[op.student_id] || 0) + 1;
+    });
+    return map;
+  }
+
+  /* ---- 本地预览：服务端 state + 未同步操作 = 手机上看到的分数 ----
+     只做「按操作加减」，不覆盖整份 state，所以不会把别人的改动冲掉。 */
+
+  function cloneState(base) {
+    var copy = { className: '班级', layout: { rows: 1, cols: 1 }, students: [], recent: [] };
+    if (!base || typeof base !== 'object') return copy;
+    for (var k in base) {
+      if (Object.prototype.hasOwnProperty.call(base, k)) copy[k] = base[k];
+    }
+    copy.layout = base.layout ? { rows: base.layout.rows, cols: base.layout.cols } : copy.layout;
+    copy.students = (base.students || []).map(function (s) {
+      return { id: s.id, name: s.name, points: Number(s.points) || 0,
+               row: Number(s.row) || 0, col: Number(s.col) || 0 };
+    });
+    copy.recent = base.recent || [];
+    return copy;
+  }
+
+  function previewState(base, queue) {
+    var st = cloneState(base);
+    var byId = {};
+    st.students.forEach(function (s) { byId[s.id] = s; });
+    (queue || []).forEach(function (op) {
+      var s = byId[op.student_id];
+      if (!s) return;
+      if (op.type === 'score') s.points += (parseInt(op.delta, 10) || 0);
+      else if (op.type === 'undo') s.points -= (parseInt(op.delta, 10) || 0);
+    });
+    return st;
+  }
+
+  function statusText(online, n) {
+    n = Math.max(0, parseInt(n, 10) || 0);
+    if (!online) return '离线，' + n + ' 条待同步';
+    if (n > 0) return '在线，正在同步 ' + n + ' 条…';
+    return '在线，已同步';
+  }
+
+  /* ---- 顺序重放 ----
+     逐条发送，成功（含服务端判重）就出队；网络/5xx/口令错是 retryable，
+     保留队列等下次；4xx 冲突/数据非法是永久失败，丢掉该条但继续后面，
+     以服务端为准（例如别的端已经改过这条记录）。 */
+
+  function replayQueue(queue, send, onRemove) {
+    var result = { done: 0, dropped: 0, left: queue.length, error: null };
+
+    function finish(err) {
+      result.left = queue.length;
+      if (err && !result.error) result.error = err;
+      return result;
+    }
+
+    function removed() {
+      // 每出队一条就立刻落盘：重放途中用户又点加减分时，enqueue 读到的
+      // 存储里不会还留着已经发出去的旧操作（否则会重复重放）。
+      if (typeof onRemove !== 'function') return;
+      try { onRemove(queue); } catch (e) { /* 存不下也不影响同步 */ }
+    }
+
+    function step() {
+      if (!queue.length) return Promise.resolve(finish(null));
+      var op = queue[0];
+      return Promise.resolve().then(function () { return send(op); })
+        .then(function (res) {
+          removeOp(queue, op.opId);
+          result.done++;
+          if (res && res.dropped) result.dropped++;
+          removed();
+          return step();
+        }, function (err) {
+          if (err && err.retryable) {
+            return finish(err);   // 网络没恢复：一条都不丢，保持原顺序
+          }
+          removeOp(queue, op.opId);
+          result.done++;
+          result.dropped++;
+          removed();
+          // 这一条永久失败（比如撤销的 expect_seq 过期），记下来但继续后面
+          // 的操作，不能让一条失效记录把整个队列卡住。
+          if (!result.error) result.error = err;
+          return step();
+        });
+    }
+
+    return step();
+  }
+
+  /* ---- 本地副本（op log） ----
+   * 手机端不只缓存「渲染要用的字段」，还留一份记录副本：
+   * 每条加分/扣分都有唯一 id，互推时按 id 去重，推十次也只算一次。
+   * seq 是主机发的序号，用来做增量拉取的游标。 */
+
+  function replicaKey(addr) { return OPS_KEY + '|' + normAddr(addr); }
+
+  function loadReplica(addr) {
+    var rep = readJSON(replicaKey(addr), null);
+    if (!rep || typeof rep !== 'object') rep = { ops: [], seq: 0 };
+    if (!Array.isArray(rep.ops)) rep.ops = [];
+    rep.ops = rep.ops.filter(function (o) { return o && typeof o.id === 'string' && o.id; });
+    rep.seq = Number(rep.seq) || 0;
+    return rep;
+  }
+
+  function saveReplica(addr, rep) {
+    var ops = (rep.ops || []).slice(-MAX_OPS);
+    ops.sort(function (a, b) { return (Number(a.seq) || 0) - (Number(b.seq) || 0); });
+    return writeJSON(replicaKey(addr), { ops: ops, seq: Number(rep.seq) || 0 });
+  }
+
+  /** 把远端推来的记录并进本副本，返回新增条数（按 id 去重）。 */
+  function mergeReplica(rep, incoming) {
+    var known = {};
+    (rep.ops || []).forEach(function (o) { known[o.id] = 1; });
+    var added = 0;
+    (incoming || []).forEach(function (o) {
+      if (!o || typeof o !== 'object') return;
+      var id = String(o.id || '');
+      var sid = String(o.studentId || o.student_id || '');
+      var delta = parseInt(o.delta, 10) || 0;
+      if (!id || !sid || !delta || known[id]) return;
+      rep.ops.push({
+        id: id, seq: Number(o.seq) || 0, ts: Number(o.ts) || 0,
+        studentId: sid, delta: delta,
+        reason: String(o.reason || '').slice(0, 200),
+        source: String(o.source || 'remote').slice(0, 32)
+      });
+      known[id] = 1;
+      added++;
+    });
+    if (added) saveReplicaTail(rep);
+    return added;
+  }
+
+  function saveReplicaTail(rep) {
+    rep.ops.sort(function (a, b) { return (Number(a.seq) || 0) - (Number(b.seq) || 0); });
+    if (rep.ops.length > MAX_OPS) rep.ops = rep.ops.slice(-MAX_OPS);
+  }
+
+  /** 本地副本里按学生汇总的分数增量（用于离线时先给用户看个数）。 */
+  function replicaPoints(rep) {
+    var byId = {};
+    (rep.ops || []).forEach(function (o) {
+      byId[o.studentId] = (byId[o.studentId] || 0) + (parseInt(o.delta, 10) || 0);
+    });
+    return byId;
+  }
+
+  /** 队列里的加分/扣分转成可批量推送的记录（撤销类仍走老接口）。 */
+  function scoreOpsOf(queue) {
+    var out = [];
+    (queue || []).forEach(function (op) {
+      if (!op || op.type !== 'score') return;
+      out.push({
+        id: op.opId,
+        ts: Number(op.ts) || Date.now(),
+        studentId: op.student_id,
+        studentName: String(op.name || ''),
+        delta: parseInt(op.delta, 10) || 0,
+        reason: String(op.reason || ''),
+        source: 'phone'
+      });
+    });
+    return out;
+  }
+
+  return {
+    uuid: uuid,
+    loadState: loadState,
+    saveState: saveState,
+    loadQueue: loadQueue,
+    saveQueue: saveQueue,
+    appendOp: appendOp,
+    enqueue: enqueue,
+    removeOp: removeOp,
+    lastQueuedFor: lastQueuedFor,
+    cancelLastQueuedScore: cancelLastQueuedScore,
+    pendingByStudent: pendingByStudent,
+    normalizeOp: normalizeOp,
+    previewState: previewState,
+    statusText: statusText,
+    replayQueue: replayQueue,
+    loadReplica: loadReplica,
+    saveReplica: saveReplica,
+    mergeReplica: mergeReplica,
+    replicaPoints: replicaPoints,
+    scoreOpsOf: scoreOpsOf
+  };
+})();
+/* ==== OFFLINE CORE END ==== */
+</script>
+
+<script>
+/* ---- 页面逻辑（只碰 DOM，不依赖框架；队列/重放在上面的 CP 里） ---- */
+var state = null;        // 服务端确认过的 state（断网时是本地缓存）
+var queue = [];          // 未同步操作，按发生顺序
+var addr = '';
+var token = '';
+/* 配对令牌：二维码里带过来的一次性入场券，用来证明「扫的是本班的码」。 */
+var pairToken = '';
+var PAIR_TOKEN_KEY = 'classpointsPairV1';
+var pair = null;         // 本地配对信息 {addr, token, fingerprint, deviceId, deviceName}
+var classFp = '';        // 当前班级指纹（配对拿到的，或 /api/whoami 报的）
+var changing = false;    // 用户正在「更换地址」界面，轮询别把连接区收起来
+var online = false;
+var syncing = false;
+var timer = null;
+var msgTimer = null;
+
+function $(id) { return document.getElementById(id); }
+
+function storeGet(key) {
+  try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
+}
+function storeSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) { /* 忽略 */ }
+}
+
+function esc(text) {
+  return String(text === null || text === undefined ? '' : text)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function tokenFromUrl() {
+  try {
+    var m = /[?&](?:t|token)=([^&#]+)/.exec(location.search || '');
+    return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : '';
+  } catch (e) { return ''; }
+}
+
+function pairTokenFromUrl() {
+  try {
+    var m = /[?&]k=([^&#]+)/.exec(location.search || '');
+    return m ? decodeURIComponent(m[1]) : '';
+  } catch (e) { return ''; }
+}
+
+function apiUrl(path) {
+  var base = String(addr || '').replace(/\/+$/, '');
+  if (!base && location.origin && location.origin !== 'null') base = location.origin;
+  var url = base + path;
+  var sep = path.indexOf('?') >= 0 ? '&' : '?';
+  if (token) url += sep + 't=' + encodeURIComponent(token);
+  if (pairToken) url += sep + 'k=' + encodeURIComponent(pairToken);
+  return url;
+}
+
+/* 带超时的 fetch：网络断了要比浏览器默认更快给出结论，好让用户看到「离线」。 */
+function httpJSON(path, body, timeoutMs) {
+  return new Promise(function (resolve, reject) {
+    var ctrl = null;
+    try { ctrl = new AbortController(); } catch (e) { ctrl = null; }
+    var slow = setTimeout(function () {
+      if (ctrl) { try { ctrl.abort(); } catch (e) { /* 忽略 */ } }
+      reject({ retryable: true, message: '连接超时，已转离线排队' });
+    }, timeoutMs || 12000);
+
+    var init = { method: body === undefined ? 'GET' : 'POST',
+                 headers: { 'Accept': 'application/json' }, cache: 'no-store' };
+    if (body !== undefined) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(body);
+    }
+    // v2.7 协议头是 X-CP-Token；老服务端认 X-Sync-Token，两个都带最稳
+    if (token) { init.headers['X-CP-Token'] = token; init.headers['X-Sync-Token'] = token; }
+    if (ctrl) init.signal = ctrl.signal;
+
+    fetch(apiUrl(path), init).then(function (resp) {
+      return resp.text().then(function (text) {
+        var data = null;
+        try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+        clearTimeout(slow);
+        if (resp.status === 401) {
+          reject({ retryable: true, auth: true, status: 401,
+                   message: '口令不对或已更换（401），请重新输入口令' });
+          return;
+        }
+        if (!resp.ok) {
+          reject({ retryable: resp.status >= 500 || resp.status === 429,
+                   dropped: resp.status < 500 && resp.status !== 429,
+                   status: resp.status,
+                   message: (data && (data.message || data.error)) || ('服务端返回 ' + resp.status) });
+          return;
+        }
+        resolve(data);
+      });
+    }, function () {
+      clearTimeout(slow);
+      reject({ retryable: true, message: '网络不可用，已离线排队' });
+    });
+  });
+}
+
+function formBusy() {
+  var el = document.activeElement;
+  if (!el) return false;
+  var tag = (el.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'select' || tag === 'textarea';
+}
+
+function note(text, kind) {
+  var el = $('msg');
+  el.textContent = text || '';
+  el.className = 'msg' + (kind ? ' ' + kind : '');
+  el.hidden = !text;
+  clearTimeout(msgTimer);
+  if (text) msgTimer = setTimeout(function () { el.hidden = true; }, 6000);
+}
+
+function statusLine(text) {
+  $('status').textContent = text || '';
+}
+
+function studentName(sid) {
+  var list = (state && state.students) || [];
+  for (var i = 0; i < list.length; i++) if (list[i].id === sid) return list[i].name;
+  return '';
+}
+
+function latestRecentFor(sid) {
+  var best = null;
+  var rows = (state && state.recent) || [];
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].student_id !== sid) continue;
+    if (!best || (Number(rows[i].seq) || 0) > (Number(best.seq) || 0)) best = rows[i];
+  }
+  return best;
+}
+
+function persistQueue() {
+  CP.saveQueue(addr, queue);
+}
+
+/* 顶栏状态点：绿=在线 / 黄=离线待同步 / 红=口令失效 */
+function setDot(kind) {
+  var el = $('dot');
+  if (el) el.className = 'dot' + (kind ? ' ' + kind : '');
+}
+
+function emitOfflineText(n) {
+  return n > 0 ? '离线：改动会暂存，联网后自动上传（' + n + ' 条待同步）'
+               : '离线：改动会暂存，联网后自动上传';
+}
+
+function updateNet() {
+  var n = queue.length;
+  var bar = $('netbar');
+  bar.textContent = online ? CP.statusText(true, n) : emitOfflineText(n);
+  bar.className = 'netbar ' + (online ? (n ? 'warn' : 'ok') : 'bad');
+  setDot(pendingPair ? 'bad' : (online ? 'on' : 'off'));
+  var sub;
+  if (!addr) sub = '先连接教师电脑';
+  else if (!state) sub = online ? '正在读取班级数据…' : '离线，等待重连…';
+  else sub = '共 ' + ((state.students || []).length) + ' 人 · 每 5 秒自动刷新';
+  if (!online && state) sub = '网络恢复后会自动同步，期间照常可以加减分';
+  $('sub').textContent = sub;
+}
+
+function schedule(ms) {
+  clearTimeout(timer);
+  timer = setTimeout(function () { timer = null; syncNow(); }, ms);
+}
+
+function stopLoop() {
+  clearTimeout(timer);
+  timer = null;
+}
+
+/* ---- 配对状态 / 连接区的显隐 ----
+   配对成功后 #setup 与 #changeWrap 全部隐藏，顶栏只留状态点 + 「更换地址」。
+   断网时**不**把 setup 弹回来，只把状态点变黄、netbar 写离线文案。 */
+function paired() {
+  return !!(addr && token && (state || (pair && pair.fingerprint)));
+}
+
+function hideConnect() {
+  // 用户主动点开「更换地址」、正在等待指纹确认、或正在输入时，轮询别把连接区收起来
+  if (!changing && !pendingPair && !formBusy()) {
+    $('setup').hidden = true;
+    $('changeWrap').hidden = true;
+    $('fpWarn').hidden = true;
+  }
+  $('btnChange').hidden = false;
+  $('btnNotify').hidden = false;
+  $('manage').hidden = false;
+}
+
+function openChange() {
+  changing = true;
+  $('changeWrap').hidden = false;
+  $('curAddr').textContent = addr || '（未连接）';
+  $('curFp').textContent = classFp || (pair && pair.fingerprint) || '—';
+  try { $('changeWrap').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  catch (e) { $('changeWrap').scrollIntoView(); }
+}
+
+function closeChange() {
+  changing = false;
+  $('changeWrap').hidden = true;
+}
+
+function showFingerprint(fp) {
+  classFp = fp || '';
+  var box = $('fp');
+  if (!classFp) { box.hidden = true; box.textContent = ''; return; }
+  box.hidden = false;
+  box.textContent = '班级指纹 ' + classFp;
+  $('curFp').textContent = classFp;
+}
+
+function showSetup(message) {
+  $('setup').hidden = false;
+  $('addr').value = addr;
+  $('token').value = token;
+  $('status').textContent = message || '';
+  setDot(message ? 'bad' : 'off');
+  if (message) note(message, 'err');
+}
+
+function showBoardMode() {
+  $('manage').hidden = false;
+  $('btnChange').hidden = !addr;
+  $('btnNotify').hidden = !addr;
+  $('curAddr').textContent = addr;
+  showFingerprint(pair && pair.fingerprint);
+  if (paired()) hideConnect();
+}
+
+/* ---- 座次表几何：座位轨道 + 过道窄轨 ----
+   与桌面端一致：colGroups 描述每块几列（例如 [2,4,2]），块与块之间插一条窄过道。
+   兼容上一代只有 aisleEvery 的存档；两者都没有就当一整块。 */
+function seatGroups(layout, cols) {
+  var raw = (layout && layout.colGroups) || [];
+  var groups = [];
+  if (Object.prototype.toString.call(raw) === '[object Array]' && raw.length) {
+    for (var i = 0; i < raw.length; i++) {
+      var n = parseInt(raw[i], 10) || 0;
+      if (n > 0) groups.push(Math.min(n, 30));
+    }
+  }
+  if (!groups.length) {
+    var every = parseInt(layout && layout.aisleEvery, 10) || 0;
+    var left = cols;
+    if (every > 0 && every < cols) {
+      while (left > 0) { var take = Math.min(every, left); groups.push(take); left -= take; }
+    } else {
+      groups = [cols];
+    }
+  }
+  var sum = 0;
+  groups.forEach(function (n) { sum += n; });
+  if (sum < cols) {
+    groups.push(cols - sum);
+  } else if (sum > cols) {
+    var clipped = [], acc = 0;
+    for (var g = 0; g < groups.length && acc < cols; g++) {
+      var m = Math.min(groups[g], cols - acc);
+      if (m > 0) { clipped.push(m); acc += m; }
+    }
+    groups = clipped;
+  }
+  return groups.length ? groups : [cols];
+}
+
+/* 轨道模板：座位列各一格，块之间一条窄过道（约 0.4 列宽）。
+   --cols 就是这里的轨道总数（座位轨 + 过道轨），不再 min(,6)。 */
+function trackTemplate(groups) {
+  var parts = [];
+  for (var g = 0; g < groups.length; g++) {
+    if (g) parts.push('var(--aisle-w, 14px)');
+    for (var k = 0; k < groups[g]; k++) parts.push('minmax(var(--seat-min, 52px), 1fr)');
+  }
+  return parts.join(' ');
+}
+
+/* 座位列号（0 基）→ 轨道序号（1 基），讲台跨列要用 */
+function seatTrackMap(groups) {
+  var map = [], track = 1;
+  for (var g = 0; g < groups.length; g++) {
+    if (g) track++;                       // 块之间的过道占一条轨道
+    for (var k = 0; k < groups[g]; k++) map.push(track++);
+  }
+  return map;
+}
+
+/* 讲台：按 podium.position 插在 top/bottom，横向跨 podium.span 个座位轨道 */
+function podiumHtml(layout, groups) {
+  var p = (layout && layout.podium) || null;
+  if (!p || !p.enabled) return '';
+  var seats = 0;
+  groups.forEach(function (n) { seats += n; });
+  var span = Math.max(1, Math.min(parseInt(p.span, 10) || 4, seats));
+  var startSeat = 0;
+  if (p.align === 'center') startSeat = Math.max(0, Math.floor((seats - span) / 2));
+  else if (p.align === 'right') startSeat = Math.max(0, seats - span);
+  var map = seatTrackMap(groups);
+  var first = map[startSeat] || 1;
+  var last = map[Math.min(seats - 1, startSeat + span - 1)] || first;
+  return '<div class="seatrow podiumrow" style="grid-template-columns:' +
+    trackTemplate(groups) + '">' +
+    '<div class="podium" style="grid-column:' + first + ' / ' + (last + 1) + '">讲 台</div>' +
+    '</div>';
+}
+
+function render() {
+  if (!state) {
+    $('rows').innerHTML = '';
+    $('empty').hidden = false;
+    return;
+  }
+  // 正在输入时别重建列表，否则 5 秒轮询会把表单冲掉
+  if (formBusy() && $('rows').childNodes.length) return;
+
+  var view = CP.previewState(state, queue);
+  var students = view.students || [];
+  // 布局要取原始 state：CP.previewState 只保留 rows/cols（它只管分数预览），
+  // colGroups / podium 这些排版信息只在 state.layout 里。
+  var layout = (state && state.layout) || view.layout || {};
+  var rows = Math.max(1, parseInt(layout.rows, 10) || 1);
+  var cols = Math.max(1, parseInt(layout.cols, 10) || 1);
+  students.forEach(function (s) {
+    rows = Math.max(rows, (parseInt(s.row, 10) || 0) + 1);
+    cols = Math.max(cols, (parseInt(s.col, 10) || 0) + 1);
+  });
+  // 轨道列：座位列各一格 + 块间过道轨，总数不再截断到 6 列（列多就整行横向滚）
+  var groups = seatGroups(layout, cols);
+  var template = trackTemplate(groups);
+  var pending = CP.pendingByStudent(queue);
+  var seatAt = {};
+  students.forEach(function (s) {
+    seatAt[(parseInt(s.row, 10) || 0) + '|' + (parseInt(s.col, 10) || 0)] = s;
+  });
+  var podium = podiumHtml(layout, groups);
+  var podiumAt = (layout.podium && layout.podium.position === 'bottom') ? 'bottom' : 'top';
+
+  var html = podium ? (podiumAt === 'top' ? podium : '') : '';
+  for (var r = 0; r < rows; r++) {
+    var cells = '';
+    var col = 0;
+    for (var g = 0; g < groups.length; g++) {
+      if (g) cells += '<div class="aisle"></div>';      // 块间过道
+      for (var k = 0; k < groups[g]; k++, col++) {
+        var found = seatAt[r + '|' + col];
+        cells += found ? seatHtml(found, pending[found.id] || 0)
+                       : '<div class="seat empty-seat"></div>';
+      }
+    }
+    html += '<div class="seatrow" style="grid-template-columns:' + template + '">' +
+            cells + '</div>';
+  }
+  if (podium && podiumAt === 'bottom') html += podium;
+  $('rows').innerHTML = html;
+  $('empty').hidden = students.length > 0;
+  $('className').textContent = view.className || '班级';
+  showFingerprint(classFp || (pair && pair.fingerprint) || '');
+
+  var sel = $('delSel');
+  var cur = sel.value;
+  var opts = '';
+  students.forEach(function (s) {
+    opts += '<option value="' + esc(s.id) + '">' + esc(s.name) + '</option>';
+  });
+  sel.innerHTML = opts || '<option value="">（暂无学生）</option>';
+  if (cur) {
+    for (var j = 0; j < sel.options.length; j++) {
+      if (sel.options[j].value === cur) { sel.value = cur; break; }
+    }
+  }
+}
+
+function seatHtml(s, pending) {
+  var chip = pending ? '<span class="chip">待同步 ' + pending + '</span>' : '';
+  return '<div class="seat' + (pending ? ' pending' : '') + '" data-id="' + esc(s.id) + '">' +
+    '<div class="seat-name">' + esc(s.name) + chip + '</div>' +
+    '<div class="seat-pts">' + (parseInt(s.points, 10) || 0) + '</div>' +
+    '<div class="seat-ops">' +
+      '<button data-act="score" data-delta="1" aria-label="给' + esc(s.name) + '加一分">+1</button>' +
+      '<button data-act="score" data-delta="-1" class="minus" aria-label="给' + esc(s.name) + '减一分">-1</button>' +
+      '<button data-act="undo" class="undo" aria-label="撤销' + esc(s.name) + '最近一条">撤销</button>' +
+    '</div></div>';
+}
+
+/* ---- 操作入队（离线也照常入队，联网后按顺序重放） ---- */
+
+function queueScore(sid, delta) {
+  if (!addr || !token) { showSetup('请先连接教师电脑'); return; }
+  var name = studentName(sid);
+  queue = CP.enqueue(addr, {
+    type: 'score', student_id: sid, delta: delta,
+    reason: delta > 0 ? '手机加分' : '手机扣分', name: name
+  });
+  note((online ? '已提交' : '离线，已记下') + (delta > 0 ? '加分' : '扣分') +
+       (name ? '：' + name : '') + '（待同步 ' + queue.length + ' 条）', 'ok');
+  render();
+  updateNet();
+  if (online) syncNow(); else schedule(4000);
+}
+
+function queueUndo(sid) {
+  if (!addr || !token) { showSetup('请先连接教师电脑'); return; }
+  var last = CP.lastQueuedFor(queue, sid);
+  if (last && last.type === 'undo') {
+    note('这条撤销还在排队，等它同步完再试', 'warn');
+    return;
+  }
+  if (last && last.type === 'score') {
+    // 还没同步的加分，直接取消队列项，不产生一次服务端撤销
+    CP.cancelLastQueuedScore(queue, sid);
+    persistQueue();
+    note('已撤销还没同步的那次' + (last.delta > 0 ? '加分' : '扣分'), 'ok');
+    render();
+    updateNet();
+    return;
+  }
+  var entry = latestRecentFor(sid);
+  if (!entry) {
+    note('这位同学还没有可撤销的记录', 'warn');
+    return;
+  }
+  queue = CP.enqueue(addr, {
+    type: 'undo', student_id: sid,
+    expect_seq: entry.seq, delta: entry.delta,
+    name: entry.student_name || studentName(sid)
+  });
+  note((online ? '已提交撤销' : '离线，已记下撤销') + '（待同步 ' + queue.length + ' 条）', 'ok');
+  render();
+  updateNet();
+  if (online) syncNow(); else schedule(4000);
+}
+
+function onRowsClick(ev) {
+  var btn = ev.target;
+  while (btn && btn !== this && btn.tagName !== 'BUTTON') btn = btn.parentNode;
+  if (!btn || btn === this || btn.tagName !== 'BUTTON') return;
+  var act = btn.getAttribute('data-act');
+  if (!act) return;
+  var seat = btn;
+  while (seat && seat !== this && !seat.getAttribute('data-id')) seat = seat.parentNode;
+  var sid = seat && seat.getAttribute('data-id');
+  if (!sid) return;
+  if (act === 'score') queueScore(sid, parseInt(btn.getAttribute('data-delta'), 10) || 1);
+  else if (act === 'undo') queueUndo(sid);
+}
+
+/* ---- 与服务端同步 ---- */
+
+function sendOp(op) {
+  if (op.type === 'score') {
+    return httpJSON('/api/score', {
+      student_id: op.student_id, delta: op.delta,
+      reason: op.reason || '手机加分', opId: op.opId
+    }, 15000).then(function (data) { applyServerPoints(op.student_id, data); return data; });
+  }
+  if (op.type === 'undo') {
+    var payload = { student_id: op.student_id, opId: op.opId };
+    if (op.expect_seq !== undefined) payload.expect_seq = op.expect_seq;
+    return httpJSON('/api/undo', payload, 15000).then(function (data) {
+      applyServerPoints(op.student_id, data);
+      return data;
+    });
+  }
+  return Promise.reject({ retryable: false, dropped: true, message: '未知操作：' + op.type });
+}
+
+function applyServerPoints(sid, data) {
+  if (!state || !data) return;
+  if (data.missing) {
+    state.students = (state.students || []).filter(function (s) { return s.id !== sid; });
+    return;
+  }
+  if (data.points === null || data.points === undefined) return;
+  var list = state.students || [];
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].id !== sid) continue;
+    list[i].points = parseInt(data.points, 10) || 0;
+    if (data.name) list[i].name = data.name;
+    return;
+  }
+}
+
+function fetchState() {
+  return httpJSON('/api/state', undefined, 10000).then(function (data) {
+    if (!data || !Array.isArray(data.students)) {
+      throw { retryable: false, message: '服务端返回的数据格式不对' };
+    }
+    state = data;
+    CP.saveState(addr, data);
+    return data;
+  });
+}
+
+/**
+ * 把队列里的加分/扣分整批推给主机（/api/ops）。
+ *
+ * 为什么改成批量：每条记录都带 id，主机按 id 去重，所以「推了一半断网、重连
+ * 又推一遍」不会重复计分。撤销类仍然单条走老接口——它依赖主机的 seq，没法批量。
+ */
+function pushScoreOps(ops) {
+  var rep = CP.loadReplica(addr);
+  var payload = {
+    deviceId: deviceId(),
+    kind: 'phone',
+    since: rep.seq || 0,
+    ops: ops
+  };
+  return httpJSON('/api/ops', payload, 20000).then(function (data) {
+    var sent = {};
+    ops.forEach(function (o) { sent[o.id] = 1; });
+    for (var i = queue.length - 1; i >= 0; i--) {
+      if (queue[i] && sent[queue[i].opId]) queue.splice(i, 1);
+    }
+    persistQueue();
+    CP.mergeReplica(rep, (data && data.ops) || []);
+    rep.seq = Math.max(rep.seq || 0, Number(data && data.seq) || 0);
+    CP.saveReplica(addr, rep);
+    return { added: Number(data && data.added) || 0, seq: rep.seq };
+  });
+}
+
+function syncNow() {
+  if (syncing) return;
+  if (!addr || !token) { showSetup(''); return; }
+  syncing = true;
+  clearTimeout(timer);
+  timer = null;
+
+  var scoreOps = CP.scoreOpsOf(queue);
+  var head = scoreOps.length
+    ? pushScoreOps(scoreOps)
+    : Promise.resolve({ added: 0 });
+
+  head.then(function () {
+    // 剩下的（撤销等）逐条重放；队列里已经没有加分项，不会重复计分
+    return queue.length
+      ? CP.replayQueue(queue, sendOp, persistQueue)
+      : Promise.resolve({ done: 0, dropped: 0, left: 0 });
+  }).then(function (res) {
+    persistQueue();
+    if (res && res.error && res.error.retryable) throw res.error;
+    if (res && res.dropped) {
+      note((res.error && res.error.message ? res.error.message + '；' : '') +
+           '有 ' + res.dropped + ' 条旧操作已失效，以服务端数据为准', 'warn');
+    }
+    return fetchState();
+  }).then(function () {
+    online = true;
+    hideConnect();
+    if (!notifyStarted) startNotifyPolling();
+  }).catch(function (err) {
+    online = false;
+    if (err && err.auth) {
+      // 口令失效才把连接区弹回来
+      showSetup(err.message);
+    } else if (err && err.retryable) {
+      note(err.message || '网络不可用，已离线排队', 'warn');
+    } else {
+      note((err && err.message) || '同步失败，稍后重试', 'err');
+    }
+  }).then(function () {
+    syncing = false;
+    render();
+    updateNet();
+    schedule(online ? (queue.length ? 1500 : 5000) : 6000);
+  });
+}
+
+/* ---- 增删学生（需要联网，避免离线冲突） ---- */
+
+function addStudent() {
+  var name = ($('nName').value || '').trim();
+  if (!name) { note('请填写学生姓名', 'warn'); return; }
+  if (!online) { note('离线时不能新增学生，请等联网后再试', 'warn'); return; }
+  var row = Math.max(0, (parseInt($('nRow').value, 10) || 1) - 1);
+  var col = Math.max(0, (parseInt($('nCol').value, 10) || 1) - 1);
+  $('nName').disabled = true;
+  httpJSON('/api/student_add', { name: name, row: row, col: col }, 12000)
+    .then(function (data) {
+      $('nName').value = '';
+      $('nRow').value = '';
+      $('nCol').value = '';
+      note('已添加：' + name + '（共 ' + (data.count || 0) + ' 人）', 'ok');
+      return fetchState();
+    })
+    .catch(function (err) {
+      note((err && err.message) || '添加失败', 'err');
+    })
+    .then(function () {
+      $('nName').disabled = false;
+      render();
+      updateNet();
+    });
+}
+
+function removeStudent() {
+  var sid = $('delSel').value;
+  if (!sid) { note('先选一位同学', 'warn'); return; }
+  if (!online) { note('离线时不能删除学生，请等联网后再试', 'warn'); return; }
+  var name = studentName(sid);
+  if (!confirm('确定删除「' + (name || '该同学') + '」吗？历史记录会保留。')) return;
+  httpJSON('/api/student_remove', { student_id: sid }, 12000)
+    .then(function (data) {
+      note('已删除：' + (data.name || name), 'ok');
+      return fetchState();
+    })
+    .catch(function (err) {
+      note((err && err.message) || '删除失败', 'err');
+    })
+    .then(function () { render(); updateNet(); });
+}
+
+/* ---- 配对（协议 §3）/ 班级指纹（协议 §1、§4）---- */
+
+var PAIR_KEY = 'classpointsPairV1';
+var DEVICE_KEY = 'classpointsDeviceId';
+var pendingPair = null;          // 指纹不一致时先存着，等用户点「仍然连接」
+
+function loadPair() {
+  try {
+    var raw = storeGet(PAIR_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+
+function savePair(next) {
+  pair = next;
+  try { storeSet(PAIR_KEY, JSON.stringify(next)); } catch (e) { /* 隐私模式存不了就算了 */ }
+  showFingerprint(next && next.fingerprint);
+}
+
+function deviceId() {
+  var d = (pair && pair.deviceId) || storeGet(DEVICE_KEY);
+  if (!d) { d = CP.uuid(); storeSet(DEVICE_KEY, d); }
+  return d;
+}
+
+function deviceLabel() {
+  var ua = navigator.userAgent || '';
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) ? '手机' : '电脑浏览器';
+}
+
+/* 老服务端没有 v2.7 端点时不能把连接搞死：404/405/400 一律当「不支持配对」 */
+function pairDevice() {
+  return httpJSON('/api/pair', {
+    deviceId: deviceId(), deviceName: deviceLabel(), kind: 'phone'
+  }, 10000).catch(function (err) {
+    if (err && (err.status === 404 || err.status === 405 || err.status === 400)) return null;
+    throw err;
+  });
+}
+
+function fingerprintWarn(oldFp, newFp) {
+  // 警告框在连接区里，必须先把连接区露出来，否则用户看不到警告
+  $('setup').hidden = false;
+  $('changeWrap').hidden = true;
+  $('addr').value = addr;
+  $('token').value = token;
+  $('fpOld').textContent = oldFp || '（未记录）';
+  $('fpNew').textContent = newFp || '（未知）';
+  $('fpWarn').hidden = false;
+  updateNet();                          // 状态点变红，离线别被「在线」盖掉
+  try { $('fpWarn').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  catch (e) { /* 老浏览器没有 smooth，忽略 */ }
+}
+
+function confirmFingerprint() {
+  if (!pendingPair) return;
+  var p = pendingPair;
+  pendingPair = null;
+  $('fpWarn').hidden = true;
+  savePair(p);
+  note('已确认，正在连接…', 'ok');
+  finishConnect();
+}
+
+function cancelFingerprint() {
+  pendingPair = null;
+  $('fpWarn').hidden = true;
+  $('setup').hidden = true;
+  statusLine('');
+  showFingerprint(pair && pair.fingerprint);
+  updateNet();
+  note('已取消，仍用原来记住的班级', 'warn');
+}
+
+function finishConnect() {
+  changing = false;
+  hideConnect();
+  updateNet();
+  syncNow();
+  checkWhoami();
+}
+
+/* 宿主随时可能换班/改名单 → 指纹会变。无口令端点，老服务端没有就静默忽略。 */
+function checkWhoami() {
+  if (!addr) return Promise.resolve(null);
+  return httpJSON('/api/whoami', undefined, 8000).then(function (d) {
+    if (!d) return null;
+    if (d.className) $('className').textContent = d.className;
+    if (!d.fingerprint) return d;
+    if (pair && pair.fingerprint) {
+      if (pair.fingerprint !== d.fingerprint) {
+        pendingPair = { addr: addr, token: token, fingerprint: d.fingerprint,
+                        deviceId: deviceId(), deviceName: deviceLabel(), at: Date.now() };
+        fingerprintWarn(pair.fingerprint, d.fingerprint);
+      }
+    } else {
+      showFingerprint(d.fingerprint);
+      if (pair) { pair.fingerprint = d.fingerprint; savePair(pair); }
+    }
+    return d;
+  }).catch(function () { return null; });   // 404/网络失败都忽略
+}
+
+/* ---- 连接 / 启动 ---- */
+
+function connect() {
+  var a = ($('addr').value || '').trim().replace(/\/+$/, '');
+  if (a && !/^https?:\/\//i.test(a)) a = 'http://' + a;
+  var t = ($('token').value || '').trim();
+  if (!a) { statusLine('请填写教师电脑地址'); return; }
+  if (!t) { statusLine('请填写同步口令'); return; }
+  if (a !== addr) {
+    // 换服务器：旧服务器的排队操作不能发到新服务器
+    addr = a;
+    queue = CP.loadQueue(addr);
+    state = CP.loadState(addr);
+  }
+  addr = a;
+  token = t;
+  storeSet('classpointsSyncAddr', addr);
+  storeSet('classpointsSyncToken', token);
+  statusLine('正在连接…');
+  online = false;
+  pendingPair = null;
+  $('fpWarn').hidden = true;
+  updateNet();
+  render();
+
+  // 先配对拿班级指纹，再比对；最后才真正开始同步
+  pairDevice().then(function (res) {
+    var oldFp = (pair && pair.addr === addr && pair.fingerprint) ? pair.fingerprint : '';
+    var freshFp = (res && res.fingerprint) ? res.fingerprint : '';
+    if (oldFp && freshFp && oldFp !== freshFp) {
+      pendingPair = { addr: addr, token: token, fingerprint: freshFp,
+                      deviceId: deviceId(), deviceName: deviceLabel(), at: Date.now() };
+      fingerprintWarn(oldFp, freshFp);
+      return;                        // 等「仍然连接 / 取消」
+    }
+    if (freshFp) {
+      savePair({ addr: addr, token: token, fingerprint: freshFp,
+                 deviceId: deviceId(), deviceName: deviceLabel(), at: Date.now() });
+    } else if (!pair || pair.addr !== addr) {
+      // 老服务端：没有指纹也要记住地址口令，好让下次启动直接进看板
+      savePair({ addr: addr, token: token, fingerprint: '', deviceId: deviceId(),
+                 deviceName: deviceLabel(), at: Date.now() });
+    }
+    finishConnect();
+  }).catch(function (err) {
+    // 配对这一步失败（口令错/网络断）不阻塞：交给 syncNow 判断是离线还是口令错
+    if (err && err.auth) { statusLine(err.message); }
+    else note((err && err.message) || '配对失败，正在尝试直接同步', 'warn');
+    finishConnect();
+  });
+}
+
+function changeAddr() {
+  stopLoop();
+  changing = false;
+  $('changeWrap').hidden = true;
+  $('setup').hidden = false;
+  $('addr').value = addr;
+  $('token').value = token;
+  statusLine('');
+  try { $('setup').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  catch (e) { $('setup').scrollIntoView(); }
+}
+
+/* ---- 通知：发送抽屉 / 接收轮询 / 横幅 / 全屏 / 附件（协议 §3、§4）---- */
+
+var NOTIFY_POLL_MS = 2000;              // 协议：每 2 秒轮询一次通知
+var MAX_FILE_BYTES = 8 * 1024 * 1024;   // 协议：单文件上限 8MB
+var MODE_TEXT = { mild: '轻微提醒', severe: '严重提醒', urgent: '紧急提醒' };
+var notifySince = 0;          // 已见过的最大通知 id
+var notifySeen = {};          // id → true，ack 没成功时也不会重复弹
+var notifyTimer = null;
+var notifyStarted = false;
+var notifyFile = null;        // {name, dataB64}
+var notifyDetail = null;      // 全屏里那条通知（下载附件要用）
+var bannerItem = null;
+var bannerTimer = null;
+var audioCtx = null;
+var beepNodes = null;
+
+function notifyReady() { return !!(addr && token); }
+
+function startNotifyPolling() {
+  if (notifyStarted) return;
+  notifyStarted = true;
+  pollNotifications();
+}
+
+function stopNotifyPolling() {
+  notifyStarted = false;
+  clearTimeout(notifyTimer);
+  notifyTimer = null;
+}
+
+function pollNotifications() {
+  clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(pollNotifications, NOTIFY_POLL_MS);
+  if (!notifyReady()) return;
+  var path = '/api/notifications?device=' + encodeURIComponent(deviceId()) +
+             '&since=' + encodeURIComponent(String(notifySince));
+  httpJSON(path, undefined, 8000).then(function (data) {
+    // 服务端回的是 {ok, device, items, lastId}；以前这里当成数组，
+    // 于是 handleNotifications 首行就把整批丢掉，手机永远收不到通知。
+    var list = (data && data.items) ? data.items : data;
+    handleNotifications(list, data && data.lastId);
+  }).catch(function () { /* 老服务端没这个端点 / 网络断：静默重试，不打扰用户 */ });
+}
+
+function handleNotifications(list, lastId) {
+  if (Object.prototype.toString.call(list) !== '[object Array]') list = [];
+  if (!list.length) {
+    // 没有新条目时也要用水位推进 since，否则每 2 秒重拉同一段
+    var watermark = parseInt(lastId, 10) || 0;
+    if (watermark > notifySince) notifySince = watermark;
+    return;
+  }
+  var fresh = [];
+  for (var i = 0; i < list.length; i++) {
+    var n = list[i];
+    if (!n || n.id === undefined || n.id === null) continue;
+    var id = String(n.id);
+    var num = parseInt(n.id, 10) || 0;
+    if (num > notifySince) notifySince = num;
+    if (notifySeen[id]) continue;
+    notifySeen[id] = true;
+    fresh.push(n);
+  }
+  if (!fresh.length) return;
+  ackNotifications(fresh.map(function (n) { return n.id; }));
+  fresh.forEach(function (n) { presentNotification(n); });
+}
+
+/* 收完立刻回执，服务端就不会再重复下发 */
+function ackNotifications(ids) {
+  if (!ids || !ids.length) return;
+  httpJSON('/api/ack', { deviceId: deviceId(), ids: ids }, 8000).catch(function () {});
+}
+
+function modeText(mode) { return MODE_TEXT[mode] || '通知'; }
+
+function presentNotification(n) {
+  var mode = n.mode === 'urgent' ? 'urgent' : (n.mode === 'severe' ? 'severe' : 'mild');
+  if (mode === 'mild') {
+    showBanner(n);                       // 轻微：顶部横幅 3 秒
+  } else {
+    showNotifyScreen(n);                 // 严重/紧急：全屏
+  }
+  if (mode === 'urgent') { vibrate(); beep(3000); }
+}
+
+function showBanner(n) {
+  bannerItem = n;
+  $('bTag').textContent = modeText(n.mode);
+  $('bTitle').textContent = n.title || '新通知';
+  $('bText').textContent = n.text || '';
+  $('banner').hidden = false;
+  clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(function () { $('banner').hidden = true; }, 3000);
+}
+
+function openNotifyDetail() {
+  if (bannerItem) showNotifyScreen(bannerItem);
+  $('banner').hidden = true;
+}
+
+function showNotifyScreen(n) {
+  notifyDetail = n;
+  var mode = n.mode === 'urgent' ? 'urgent' : (n.mode === 'severe' ? 'severe' : 'mild');
+  var box = $('notifyScreen');
+  box.className = 'overlay ' + mode;
+  $('oScreenTag').textContent = modeText(mode);
+  $('oScreenTitle').textContent = n.title || '通知';
+  $('oScreenText').textContent = n.text || '';
+  $('oScreenFrom').textContent = n.fromName ? ('来自 ' + n.fromName) : '';
+  if (n.fileId) {
+    $('oScreenFile').innerHTML =
+      '<button class="primary" onclick="downloadNotifyFile()">下载附件' +
+      (n.fileName ? '：' + esc(n.fileName) : '') + '</button>';
+  } else {
+    $('oScreenFile').innerHTML = '';
+  }
+  box.hidden = false;
+}
+
+function downloadNotifyFile() {
+  if (!notifyDetail || !notifyDetail.fileId) return;
+  var url = apiUrl('/api/file/' + encodeURIComponent(notifyDetail.fileId));
+  try { window.open(url, '_blank'); }
+  catch (e) { location.href = url; }
+}
+
+function dismissOverlay() {
+  $('notifyScreen').hidden = true;
+  notifyDetail = null;
+  stopBeep();
+}
+
+/* 紧急提醒：震动 + 提示音。声音用 WebAudio 现场合成，不引用任何外部音频文件。 */
+function vibrate() {
+  try { if (navigator.vibrate) navigator.vibrate([0, 300, 200, 300]); }
+  catch (e) { /* 不支持就算了 */ }
+}
+
+function beep(ms) {
+  try {
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === 'suspended' && audioCtx.resume) audioCtx.resume();
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 880;
+    var t0 = audioCtx.currentTime;
+    var dur = Math.max(0.3, (parseInt(ms, 10) || 3000) / 1000);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.2, t0 + 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+    beepNodes = { osc: osc, gain: gain };
+  } catch (e) { /* 没声音权限就算了，震动和全屏还在 */ }
+}
+
+function stopBeep() {
+  if (!beepNodes) return;
+  try { beepNodes.osc.stop(); } catch (e) { /* 已停 */ }
+  try { beepNodes.gain.disconnect(); } catch (e) { /* 忽略 */ }
+  beepNodes = null;
+}
+
+/* ---- 发送抽屉 ---- */
+
+function openNotify() {
+  $('notifyMask').hidden = false;
+  $('notifyDrawer').hidden = false;
+  $('nStatus').textContent = '';
+  loadNotifyTargets();
+}
+
+function closeNotify() {
+  $('notifyMask').hidden = true;
+  $('notifyDrawer').hidden = true;
+}
+
+function loadNotifyTargets() {
+  var box = $('nTargets');
+  var mine = deviceId();
+  box.innerHTML = '<label><input type="checkbox" value="*" checked> 全部设备</label>';
+  httpJSON('/api/devices', undefined, 8000).then(function (data) {
+    // 服务端回的是 {"ok":true,"devices":[...]}，直接当数组用会永远只显示「全部设备」。
+    var list = data && data.devices ? data.devices : data;
+    if (!list || Object.prototype.toString.call(list) !== '[object Array]') return;
+    list.forEach(function (d) {
+      if (!d || !d.id || d.id === mine || d.revoked) return;
+      var kind = d.kind === 'phone' ? '手机' : (d.kind === 'desktop' ? '电脑' : '设备');
+      box.innerHTML += '<label><input type="checkbox" value="' + esc(d.id) + '"> ' +
+        esc(d.name || d.id) + '（' + kind + '）</label>';
+    });
+  }).catch(function () { /* 老服务端没有设备列表：只能发「全部」 */ });
+}
+
+function notifyTargets() {
+  var out = [];
+  var boxes = $('nTargets').querySelectorAll('input[type=checkbox]');
+  for (var i = 0; i < boxes.length; i++) if (boxes[i].checked) out.push(boxes[i].value);
+  if (!out.length || out.indexOf('*') >= 0) return ['*'];
+  return out;
+}
+
+function notifyMode() {
+  var el = $('nModes').querySelector('input[name=nmode]:checked');
+  var m = el ? el.value : 'mild';
+  return (m === 'severe' || m === 'urgent') ? m : 'mild';
+}
+
+function selectNotifyMode(target) {
+  var label = target;
+  while (label && label !== $('nModes') &&
+         (!label.getAttribute || !label.getAttribute('data-mode'))) {
+    label = label.parentNode;
+  }
+  if (!label || label === $('nModes')) return;
+  var labels = $('nModes').querySelectorAll('label[data-mode]');
+  for (var i = 0; i < labels.length; i++) labels[i].className = '';
+  label.className = 'sel';
+}
+
+function onNotifyFileChange() {
+  var input = $('nFile');
+  var f = input.files && input.files[0];
+  notifyFile = null;
+  $('nFileHint').textContent = '';
+  if (!f) return;
+  if (f.size > MAX_FILE_BYTES) {
+    $('nFileHint').textContent = '附件超过 8MB 上限，请换一个小一点的文件';
+    note('附件超过 8MB 上限（服务端也会拒绝）', 'err');
+    try { input.value = ''; } catch (e) { /* 忽略 */ }
+    return;
+  }
+  $('nFileHint').textContent = '已选择：' + f.name + '（' +
+    Math.round(f.size / 1024) + ' KB），读取中…';
+  var reader = new FileReader();
+  reader.onload = function () {
+    var s = String(reader.result || '');
+    var cut = s.indexOf(',');
+    notifyFile = { name: f.name, dataB64: cut >= 0 ? s.slice(cut + 1) : s };
+    $('nFileHint').textContent = '已选择：' + f.name + '（' +
+      Math.round(f.size / 1024) + ' KB）';
+  };
+  reader.onerror = function () {
+    notifyFile = null;
+    $('nFileHint').textContent = '读取文件失败，可以不附文件再发';
+  };
+  reader.readAsDataURL(f);
+}
+
+function sendNotify() {
+  if (!notifyReady()) { note('请先连接教师电脑', 'warn'); return; }
+  var title = ($('nTitle').value || '').trim();
+  var text = ($('nText').value || '').trim();
+  if (!title && !text) { $('nStatus').textContent = '标题和正文至少写一样'; return; }
+  var body = { from: deviceId(), targets: notifyTargets(), mode: notifyMode(),
+               title: title, text: text };
+  if (notifyFile) body.file = { name: notifyFile.name, dataB64: notifyFile.dataB64 };
+  $('nSend').disabled = true;
+  $('nStatus').textContent = '发送中…';
+  httpJSON('/api/notify', body, 20000).then(function () {
+    $('nStatus').textContent = '已发送';
+    $('nTitle').value = '';
+    $('nText').value = '';
+    try { $('nFile').value = ''; } catch (e) { /* 忽略 */ }
+    notifyFile = null;
+    $('nFileHint').textContent = '';
+    note('通知已发送（' + modeText(body.mode) + '）', 'ok');
+    setTimeout(closeNotify, 400);
+  }).catch(function (err) {
+    $('nStatus').textContent = (err && err.message) || '发送失败';
+    note((err && err.message) || '通知发送失败', 'err');
+  }).then(function () { $('nSend').disabled = false; });
+}
+
+(function boot() {
+  pair = loadPair();
+  addr = (storeGet('classpointsSyncAddr') || '').trim();
+  token = (storeGet('classpointsSyncToken') || '').trim();
+  pairToken = (storeGet(PAIR_TOKEN_KEY) || '').trim();
+  var pairFromUrl = pairTokenFromUrl();
+  if (pairFromUrl) pairToken = pairFromUrl;
+  if (pairToken) storeSet(PAIR_TOKEN_KEY, pairToken);
+  var fromUrl = tokenFromUrl();
+  if (fromUrl) token = fromUrl;
+  if (!addr && pair && pair.addr) addr = String(pair.addr).trim();
+  if (!token && pair && pair.token) token = String(pair.token).trim();
+  if (!addr && location.origin && location.origin !== 'null') addr = location.origin;
+  if (addr) storeSet('classpointsSyncAddr', addr);
+  if (token) storeSet('classpointsSyncToken', token);
+  $('addr').value = addr;
+  $('token').value = token;
+  state = CP.loadState(addr);
+  queue = CP.loadQueue(addr);
+
+  $('rows').addEventListener('click', onRowsClick);
+  $('nFile').addEventListener('change', onNotifyFileChange);
+  $('nModes').addEventListener('click', function (ev) { selectNotifyMode(ev.target); });
+
+  if (state) { render(); }
+  showFingerprint(pair && pair.fingerprint);
+  updateNet();
+
+  if (addr && token) {
+    // 配对过：直接进看板，连接区整体收起，只留状态点 + 「更换地址」
+    hideConnect();
+    syncNow();
+    checkWhoami();
+  } else {
+    showSetup('');
+  }
+
+  window.addEventListener('online', function () { schedule(300); });
+  window.addEventListener('offline', function () { online = false; updateNet(); });
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) schedule(300);
+  });
+  window.addEventListener('pagehide', function () { stopLoop(); stopNotifyPolling(); });
+})();
+</script>
+</body>
+</html>

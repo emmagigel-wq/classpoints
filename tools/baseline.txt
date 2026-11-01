@@ -1,0 +1,301 @@
+== 通过 13 / 78 ==
+  ✓ app.__init__                                1 code objects  字节一致
+  ✓ app.core.__init__                           1 code objects  字节一致
+  ✓ app.core.devices                           35 code objects  结构一致
+  ✓ app.core.oplog                             23 code objects  字节一致
+  ✓ app.core.pairing                           15 code objects  字节一致
+  ✓ app.core.state                             23 code objects  结构一致
+  ✓ app.core.storage                           51 code objects  结构一致
+  ✓ app.services.__init__                       1 code objects  字节一致
+  ✓ app.services.autosave                      16 code objects  结构一致
+  ✓ app.services.media_probe                   11 code objects  字节一致
+  ✓ app.services.qr                            13 code objects  字节一致
+  ✓ app.version                                 8 code objects  字节一致
+  ✓ entry_main                                 15 code objects  字节一致
+
+✗ app.core.fingerprint  [diff]
+    [class_fingerprint]
+      指令序列不同: 第 8 条指令: ('POP_JUMP_IF_NOT_NONE', ('JUMP_TO', 12)) vs ('POP_JUMP_IF_NONE', ('JUMP_TO', 24))
+
+✗ app.core.layout  [diff]
+    [seat_line]
+      指令序列不同: 第 52 条指令: ('LOAD_FAST_BORROW', 'acc') vs ('BINARY_OP', 0)
+
+✗ app.core.lottery  [diff]
+    [<module>]
+      指令序列不同: 第 99 条指令: ('LOAD_CONST', 'pool') vs ('LOAD_CONST', (None, None, None, None, None, True))
+      co_consts[20]: 'pool' vs ('CODE', '__annotate__')
+    [DrawResult]
+      指令序列不同: 第 24 条指令: ('LOAD_CONST', 'list[Student]') vs ('LOAD_CONST', 'list[Student] | None')
+      co_consts[9]: 'list[Student]' vs 'list[Student] | None'
+    [draw]
+      co_argcount: 1 vs 7
+      co_kwonlyargcount: 6 vs 0
+    [draw_for_student]
+      co_argcount: 2 vs 5
+      co_kwonlyargcount: 3 vs 0
+
+✗ app.core.models  [diff]
+    [Settings.from_dict]
+      指令序列不同: 第 18 条指令: ('LOAD_CONST', 'step_morning') vs ('BUILD_MAP', 0)
+    [__annotate__#8]
+      指令序列不同: 第 7 条指令: ('LOAD_CONST', 'return') vs ('LOAD_CONST', 'value')
+      co_consts[1]: 'return' vs 'value'
+
+✗ app.core.paths  [diff]
+    [_copy_tree_tolerant]
+      指令序列不同: 第 8 条指令: ('FOR_ITER', ('JUMP_TO', 53)) vs ('FOR_ITER', ('JUMP_TO', 54))
+
+✗ app.core.scoring  [diff]
+    [recalc_points]
+      指令序列不同: 第 25 条指令: ('CONTAINS_OP', 0) vs ('CONTAINS_OP', 1)
+    [history_sorted]
+      指令序列不同: 第 139 条指令: ('STORE_FAST', 'h') vs ('STORE_FAST_LOAD_FAST', ('h', 'kw'))
+    [stats_of]
+      指令序列不同: 第 1 条指令: ('COPY', 1) vs ('STORE_FAST', 'plus')
+    [move_student]
+      指令序列不同: 第 60 条指令: ('LOAD_FAST_BORROW_LOAD_FAST_BORROW', ('row', 'col')) vs ('LOAD_FAST_BORROW_LOAD_FAST_BORROW', ('row', 'st'))
+
+✗ app.core.theme_store  [diff]
+    [restore_theme.<locals>.<genexpr>]
+      指令序列不同: 第 3 条指令: ('FOR_ITER', ('JUMP_TO', 11)) vs ('FOR_ITER', ('JUMP_TO', 10))
+
+✗ app.core.videos  [diff]
+    [set_prize_video]
+      指令序列不同: 第 13 条指令: ('POP_JUMP_IF_FALSE', ('JUMP_TO', 22)) vs ('POP_JUMP_IF_FALSE', ('JUMP_TO', 23))
+
+✗ app.io.__init__  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/io/__init__.py
+
+✗ app.io.backup  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/io/backup.py
+
+✗ app.io.csv_io  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/io/csv_io.py
+
+✗ app.io.docx_io  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/io/docx_io.py
+
+✗ app.io.legacy  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/io/legacy.py
+
+✗ app.io.xlsx_io  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/io/xlsx_io.py
+
+✗ app.main  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/main.py
+
+✗ app.selftest.__init__  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/selftest/__init__.py
+
+✗ app.selftest.checks  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/selftest/checks.py
+
+✗ app.selftest.runner  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/selftest/runner.py
+
+✗ app.services.assets  [diff]
+    [_draw_chevron]
+      指令序列不同: 第 208 条指令: ('LOAD_FAST_BORROW', 'tmp') vs ('NOP', None)
+
+✗ app.services.diagnose  [diff]
+    [_port_open]
+      指令序列不同: 第 35 条指令: ('LOAD_CONST', None) vs ('LOAD_CONST', True)
+    [run_checks]
+      指令序列不同: 第 318 条指令: ('LOAD_FAST_BORROW', 'hostname') vs ('LOAD_FAST', 'hostname')
+
+✗ app.services.domain_setup  [diff]
+    [step_login]
+      指令序列不同: 第 45 条指令: ('POP_JUMP_IF_FALSE', ('JUMP_TO', 50)) vs ('POP_JUMP_IF_TRUE', ('JUMP_TO', 50))
+    [deploy]
+      指令序列不同: 第 286 条指令: ('POP_JUMP_IF_TRUE', ('JUMP_TO', 291)) vs ('POP_JUMP_IF_FALSE', ('JUMP_TO', 291))
+
+✗ app.services.media_decode  [diff]
+    [info]
+      指令序列不同: 第 70 条指令: ('LOAD_FAST', 'proc') vs ('LOAD_FAST_BORROW', 'proc')
+      co_names: ('os', 'stat', 'str', 'int', 'st_mtime', 'st_size', '_INFO_CACHE', 'get', 'dict', 'OSError', 'transcode', 'ffmpeg_path', '_run', 'subprocess', 'SubprocessError', 'stderr', 'decode', '_DUR_RE', 'search', 'group', 'float', '_FPS_RE', 'ValueError', '_SIZE_RE') vs ('os', 'stat', 'str', 'int', 'st_mtime', 'st_size', '_INFO_CACHE', 'get', 'dict', 'OSError', 'transcode', 'ffmpeg_path', '_run', 'stderr', 'decode', '_DUR_RE', 'search', 'group', 'float', '_FPS_RE', 'ValueError', '_SIZE_RE', 'subprocess', 'SubprocessError')
+
+✗ app.services.pulse  [diff]
+    [PulseController]
+      指令序列不同: 第 61 条指令: ('LOAD_CONST', 'amount') vs ('LOAD_CONST', (1,))
+      co_consts[14]: 'amount' vs ('CODE', 'PulseController.__annotate__')
+    [PulseController.flash]
+      co_argcount: 3 vs 4
+      co_kwonlyargcount: 1 vs 0
+
+✗ app.services.sync_client  [diff]
+    [SyncClient.__annotate__]
+      指令序列不同: 第 15 条指令: ('BUILD_MAP', 4) vs ('LOAD_CONST', 'return')
+      co_consts 长度 6 vs 8，多出 ['return', 'None']
+    [SyncClient._request]
+      指令序列不同: 第 47 条指令: ('LOAD_FAST_LOAD_FAST', ('url', 'data')) vs ('LOAD_FAST', 'url')
+    [SyncClient.apply]
+      指令序列不同: 第 34 条指令: ('LOAD_SMALL_INT', 0) vs ('CALL', 1)
+    [SyncClient.ack]
+      指令序列不同: 第 43 条指令: ('LOAD_SMALL_INT', 0) vs ('CALL', 1)
+    [SyncClient.send_notification]
+      指令序列不同: 第 93 条指令: ('LOAD_SMALL_INT', 0) vs ('CALL', 1)
+    [SyncClient.fetch_file]
+      指令序列不同: 第 17 条指令: ('BUILD_STRING', 2) vs ('BINARY_OP', 0)
+
+✗ app.services.sync_server  [diff]
+    [OpLog.__init__]
+      指令序列不同: 第 3 条指令: ('POP_JUMP_IF_NONE', ('JUMP_TO', 9)) vs ('TO_BOOL', None)
+    [_last_entry_for]
+      指令序列不同: 第 30 条指令: ('COMPARE_OP', '>') vs ('COMPARE_OP', '<=')
+    [_Handler.__annotate__#2]
+      指令序列不同: 第 13 条指令: ('BUILD_MAP', 3) vs ('LOAD_CONST', 'return')
+      co_consts 长度 7 vs 9，多出 ['return', 'None']
+    [_Handler._drain_body]
+      指令序列不同: 第 37 条指令: ('POP_JUMP_IF_FALSE', ('JUMP_TO', 44)) vs ('POP_JUMP_IF_FALSE', ('JUMP_TO', 42))
+    [_Handler._post_score]
+      指令序列不同: 第 167 条指令: ('LOAD_CONST', None) vs ('LOAD_SMALL_INT', 200)
+    [_Handler._post_undo]
+      指令序列不同: 第 173 条指令: ('LOAD_CONST', None) vs ('LOAD_SMALL_INT', 200)
+    [_Handler._post_student_add]
+      指令序列不同: 第 141 条指令: ('LOAD_CONST', None) vs ('LOAD_SMALL_INT', 200)
+    [_Handler._post_student_remove]
+      指令序列不同: 第 98 条指令: ('LOAD_CONST', None) vs ('LOAD_SMALL_INT', 200)
+    [SyncServer.__init__]
+      指令序列不同: 第 3 条指令: ('POP_JUMP_IF_NOT_NONE', ('JUMP_TO', 8)) vs ('POP_JUMP_IF_NONE', ('JUMP_TO', 7))
+
+✗ app.services.sync_v27  [diff]
+    [NotifyStore._load]
+      指令序列不同: 第 31 条指令: ('POP_JUMP_IF_FALSE', ('JUMP_TO', 65)) vs ('POP_JUMP_IF_FALSE', ('JUMP_TO', 64))
+    [NotifyStore.add]
+      指令序列不同: 第 103 条指令: ('LOAD_FAST_LOAD_FAST', ('title', 'text')) vs ('LOAD_FAST', 'title')
+    [NotifyStore.ack]
+      指令序列不同: 第 14 条指令: ('FOR_ITER', ('JUMP_TO', 40)) vs ('FOR_ITER', ('JUMP_TO', 39))
+    [V27Mixin.route_v27_get]
+      指令序列不同: 第 534 条指令: ('POP_JUMP_IF_FALSE', ('JUMP_TO', 560)) vs ('POP_JUMP_IF_FALSE', ('JUMP_TO', 561))
+      co_names: ('_store_obj', '_devices', 'getattr', 'state', '_fingerprint', 'len', 'devices', '_token_ok', '_respond', '_j', '_reject_if_revoked', '_fail', 'as_list', 'app.core', 'oplog', '_q', 'int', 'get', 'TypeError', 'ValueError', '_device_id', 'touch', 'max_seq', 'ops_since', 'students', 'to_dict', 'pop', 'isinstance', 'dict', 'bool', 'time', '_notify_store', 'pending', 'id', 'startswith', 'rsplit', 'find_file', 'read_bytes', 'OSError') vs ('_store_obj', '_devices', 'getattr', 'state', '_fingerprint', 'len', 'devices', '_token_ok', '_respond', '_j', '_reject_if_revoked', '_fail', 'as_list', 'app.core', 'oplog', '_q', 'int', 'get', 'TypeError', 'ValueError', '_device_id', 'touch', 'max_seq', 'ops_since', 'students', 'to_dict', 'str', 'pop', 'isinstance', 'dict', 'bool', 'time', '_notify_store', 'pending', 'id', 'startswith', 'rsplit', 'find_file', 'read_bytes', 'OSError')
+    [V27Mixin.route_v27_post]
+      指令序列不同: 第 13 条指令: ('POP_JUMP_IF_FALSE', ('JUMP_TO', 165)) vs ('POP_JUMP_IF_FALSE', ('JUMP_TO', 164))
+
+✗ app.services.timer_registry  [diff]
+    [TimerRegistry.schedule_repeating.<locals>.<lambda>]
+      指令序列不同: 第 4 条指令: ('UNARY_NOT', None) vs ('POP_JUMP_IF_TRUE', ('JUMP_TO', 10))
+
+✗ app.services.transcode  [diff]
+    [download_ffmpeg]
+      指令序列不同: 第 262 条指令: ('LOAD_CONST', None) vs ('LOAD_GLOBAL', '_report')
+    [video_codec]
+      指令序列不同: 第 52 条指令: ('LOAD_FAST', 'raw') vs ('LOAD_FAST_BORROW', 'raw')
+      co_names: ('ffmpeg_path', 'Path', 'str', 'is_file', 'subprocess', 'run', '_no_window_flags', 'stderr', 'Exception', 'isinstance', 'decode', '_CODEC_RE', 'search', 'group', 'lower') vs ('ffmpeg_path', 'Path', 'str', 'is_file', 'subprocess', 'run', '_no_window_flags', 'stderr', 'isinstance', 'decode', '_CODEC_RE', 'search', 'group', 'lower', 'Exception')
+    [_pump]
+      指令序列不同: 第 2 条指令: ('LOAD_FAST_BORROW', 'stream') vs ('NOP', None)
+      co_names: ('readline', 'isinstance', 'bytes', 'decode', 'str', 'put', 'Exception', 'close') vs ('readline', 'Exception', 'isinstance', 'bytes', 'decode', 'str', 'put', 'close')
+
+✗ app.services.tunnel  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/services/tunnel.py
+
+✗ app.services.voting  [diff]
+    [VotingController._commit]
+      指令序列不同: 第 44 条指令: ('LOAD_FAST_BORROW', 'student_id') vs ('LOAD_FAST_BORROW_LOAD_FAST_BORROW', ('student_id', 'kind'))
+      co_argcount: 3 vs 4
+      co_kwonlyargcount: 1 vs 0
+
+✗ app.ui.__init__  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/__init__.py
+
+✗ app.ui.dialogs.__init__  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/__init__.py
+
+✗ app.ui.dialogs.about_dialog  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/about_dialog.py
+
+✗ app.ui.dialogs.app_icon  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/app_icon.py
+
+✗ app.ui.dialogs.changelog_dialog  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/changelog_dialog.py
+
+✗ app.ui.dialogs.device_manager  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/device_manager.py
+
+✗ app.ui.dialogs.domain_setup  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/domain_setup.py
+
+✗ app.ui.dialogs.io_dialog  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/io_dialog.py
+
+✗ app.ui.dialogs.layout_dialog  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/layout_dialog.py
+
+✗ app.ui.dialogs.manual_dialog  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/manual_dialog.py
+
+✗ app.ui.dialogs.notify_compose  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/notify_compose.py
+
+✗ app.ui.dialogs.prize_dialog  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/prize_dialog.py
+
+✗ app.ui.dialogs.settings_dialog  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/settings_dialog.py
+
+✗ app.ui.dialogs.settings_nav  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/dialogs/settings_nav.py
+
+✗ app.ui.history_view  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/history_view.py
+
+✗ app.ui.leaderboard  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/leaderboard.py
+
+✗ app.ui.lottery_view  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/lottery_view.py
+
+✗ app.ui.main_window  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/main_window.py
+
+✗ app.ui.manual_dialog  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/manual_dialog.py
+
+✗ app.ui.modals  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/modals.py
+
+✗ app.ui.seat_map  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/seat_map.py
+
+✗ app.ui.seat_map_cell  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/seat_map_cell.py
+
+✗ app.ui.stage  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/stage.py
+
+✗ app.ui.stage_seat_cell  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/stage_seat_cell.py
+
+✗ app.ui.theme  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/theme.py
+
+✗ app.ui.widgets.__init__  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/__init__.py
+
+✗ app.ui.widgets.calendar  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/calendar.py
+
+✗ app.ui.widgets.ffmpeg_player  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/ffmpeg_player.py
+
+✗ app.ui.widgets.flow_layout  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/flow_layout.py
+
+✗ app.ui.widgets.launch  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/launch.py
+
+✗ app.ui.widgets.notify_overlay  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/notify_overlay.py
+
+✗ app.ui.widgets.student_picker  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/student_picker.py
+
+✗ app.ui.widgets.toast  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/toast.py
+
+✗ app.ui.widgets.video_picker  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/video_picker.py
+
+✗ app.ui.widgets.video_player  [missing-src]
+    未重建: /root/Documents/deepseek-harness/default-workspace/classpoints-work/classpoints-py/app/ui/widgets/video_player.py

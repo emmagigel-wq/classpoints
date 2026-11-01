@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>源码介绍 —— 班级积分系统（Python 重写版）</title>
+<style>
+:root { color-scheme: light dark; }
+body { margin: 0 auto; max-width: 46rem; padding: 24px 18px 64px;
+       font: 16px/1.75 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+       color: #24303f; background: #fbfcfe; }
+h1 { font-size: 1.6rem; margin: 0 0 .6rem; letter-spacing: .01em; }
+h2 { font-size: 1.25rem; margin: 2.2rem 0 .8rem; padding-bottom: .35rem;
+     border-bottom: 1px solid #e6ebf2; }
+h3 { font-size: 1.05rem; margin: 1.6rem 0 .6rem; color: #1e5eff; }
+p { margin: .7rem 0; }
+code { background: #eef2f8; border-radius: 4px; padding: .12em .38em;
+       font: .88em/1.5 ui-monospace, "SF Mono", Consolas, monospace; }
+pre { background: #12212f; color: #e8eef6; padding: 14px 16px; border-radius: 10px;
+      overflow-x: auto; margin: .9rem 0; }
+pre code { background: none; padding: 0; color: inherit; font-size: .86em; }
+table { border-collapse: collapse; width: 100%; margin: .9rem 0; font-size: .94rem; }
+th, td { border: 1px solid #e2e8f1; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f1f5fb; font-weight: 600; }
+blockquote { margin: .9rem 0; padding: .6rem .9rem; background: #f4f7fd;
+             border-left: 3px solid #5b8cff; color: #465566; }
+ul, ol { padding-left: 1.35rem; margin: .6rem 0; }
+li { margin: .28rem 0; }
+hr { border: 0; border-top: 1px solid #e6ebf2; margin: 2rem 0; }
+strong { color: #16233a; }
+a { color: #1e5eff; }
+@media (prefers-color-scheme: dark) {
+  body { color: #d7dfea; background: #10161f; }
+  h3 { color: #7fa6ff; }
+  h2 { border-color: #24303f; }
+  code { background: #1b2531; }
+  th { background: #182231; }
+  th, td { border-color: #24303f; }
+  blockquote { background: #16202c; border-left-color: #4d7dff; color: #a9b6c6; }
+  hr { border-color: #24303f; }
+  strong { color: #eef4ff; }
+}
+</style>
+</head>
+<body>
+<h1>源码介绍 —— 班级积分系统（Python 重写版）</h1>
+<blockquote>版本：<strong>2.13.16</strong>（唯一来源 <code>app/version.py</code>）</blockquote>
+<blockquote>规模：<code>app/</code> 77 个模块 25,480 行；<code>installer/</code> 14 个模块 2,394 行；入口 118 行。</blockquote>
+<p>这是一份「读代码之前先看」的导览：讲清楚这套源码分成哪几层、每层负责什么、</p>
+<p>一次「加分」和一次「早读舞台」的数据是怎么流动的，以及安装器与打包链是怎么拼起来的。</p>
+<hr>
+<h2>1. 这是什么</h2>
+<p><code>班级积分系统</code> 原本是一个网页版（HTML + <code>app.js</code>，版本 1.2.201）。本工程是它的</p>
+<p><strong>PyQt5 桌面重写版</strong>：功能对齐、视觉按原版 HTML 的 <code>:root</code> 令牌与实测渲染值 1:1 复刻，</p>
+<p>但数据、状态、延迟动作全部搬进了明确的 Python 分层里。</p>
+<p>三个硬约定贯穿全工程：</p>
+<ol>
+<li><strong>版本号只有一个来源</strong> —— <code>app/version.py</code>。标题栏、导出文件名、备份文件头、</li>
+</ol>
+<p>安装包 manifest 全读它，避免「顶栏一个版本、导出文件另一个版本」。</p>
+<ol>
+<li><strong>纯逻辑与界面分离</strong> —— <code>app/core/</code> 不 import 任何 Qt，可以脱离界面单测；</li>
+</ol>
+<p><code>app/services/</code> 是唯一把「界面意图」翻译成「core 调用」的地方。</p>
+<ol>
+<li><strong>延迟动作统一登记</strong> —— 所有 <code>QTimer</code>、闪一下、几秒后回收，都走</li>
+</ol>
+<p><code>TimerRegistry</code>，退出时一次收干净，不留「幽灵分」。</p>
+<hr>
+<h2>2. 目录结构</h2>
+<pre><code class="lang-">classpoints-py/
+├── 班级积分系统.py          启动入口（异常兜底 / noconsole 日志 / --selftest）
+├── app/
+│   ├── main.py              装配层：加载数据 → 建主窗口 → 收退出清理
+│   ├── version.py           版本号唯一来源
+│   ├── core/                纯逻辑层（14 模块，3,398 行，无 Qt）
+│   ├── io/                  导入导出（6 模块，2,393 行）
+│   ├── services/            协调层（16 模块，5,290 行）
+│   ├── ui/                  界面层（12 模块，6,172 行）
+│   │   ├── dialogs/         各类弹窗（13 模块，4,315 行）
+│   │   └── widgets/         通用小部件（10 模块，2,612 行）
+│   └── selftest/            内置自检（3 模块，1,028 行）
+├── installer/               安装程序（14 模块，2,394 行，纯 stdlib + 可选 PyQt5）
+│   └── ui/                  四页安装向导
+├── packaging/               PyInstaller spec 与 Windows 构建脚本
+├── docs/                    BUILD.md 与本文件
+└── _tools/ensure_bom.py     .ps1 的 UTF-8 BOM 自检/补齐</code></pre>
+<hr>
+<h2>3. 分层职责</h2>
+<h3>3.1 <code>app/core/</code> —— 纯逻辑层</h3>
+<p>只处理数据与规则，不碰界面、不碰定时器。可以单独 import 做单元测试。</p>
+<table><thead><tr><th>模块</th><th>职责</th></tr></thead><tbody>
+<tr><td><code>models.py</code></td><td>数据模型：<code>AppState</code> / <code>Student</code> / <code>Layout</code> / <code>Podium</code> / <code>Prize</code> / <code>LotteryRecord</code> 等纯数据类</td></tr>
+<tr><td><code>state.py</code></td><td>状态容器：把 <code>AppState</code> 与「变更通知 / 脏标记 / 保存节奏」绑在一起</td></tr>
+<tr><td><code>storage.py</code></td><td>落盘：原子写入、备份轮转、大文件旁路存储</td></tr>
+<tr><td><code>scoring.py</code></td><td>记分 / 撤销 / 排行 / 记录筛选排序</td></tr>
+<tr><td><code>layout.py</code></td><td>座位布局：列分组、过道、讲台、行列与网格换算</td></tr>
+<tr><td><code>lottery.py</code></td><td>抽奖：资格筛选、权重抽取、抽取人数、随机抽人</td></tr>
+<tr><td><code>videos.py</code></td><td>抽奖视频仓库 + 「奖项 → 动画/视频」绑定表</td></tr>
+<tr><td><code>devices.py</code> / <code>pairing.py</code> / <code>fingerprint.py</code></td><td>多端：已配对设备表、配对令牌、班级短指纹</td></tr>
+<tr><td><code>oplog.py</code></td><td>操作流水账：多端各存副本时用它合并改动</td></tr>
+<tr><td><code>paths.py</code></td><td>数据目录定位，允许把数据挪到任意盘符</td></tr>
+<tr><td><code>theme_store.py</code></td><td>本机「主题相关」的那几组文件</td></tr>
+</tbody></table>
+<h3>3.2 <code>app/io/</code> —— 导入导出</h3>
+<table><thead><tr><th>模块</th><th>职责</th></tr></thead><tbody>
+<tr><td><code>csv_io.py</code></td><td>CSV：学生名单与积分记录</td></tr>
+<tr><td><code>xlsx_io.py</code></td><td>XLSX：学生名单 + 积分记录两个 sheet</td></tr>
+<tr><td><code>docx_io.py</code></td><td>DOCX：<code>班级积分报告</code></td></tr>
+<tr><td><code>backup.py</code></td><td>整库备份 / 恢复：带 manifest 的 zip 归档 + 轮转</td></tr>
+<tr><td><code>legacy.py</code></td><td>旧版（网页版）备份文件的兼容解析</td></tr>
+</tbody></table>
+<h3>3.3 <code>app/services/</code> —— 协调层</h3>
+<p>界面只喊「我要加分」，具体怎么记、怎么落盘、怎么闪、怎么撤，全在这一层。</p>
+<table><thead><tr><th>模块</th><th>职责</th></tr></thead><tbody>
+<tr><td><code>timer_registry.py</code></td><td>延迟动作的统一登记表（全局唯一调度入口）</td></tr>
+<tr><td><code>voting.py</code></td><td>投票控制器：早读 / 午读「点座位给分」的唯一入口</td></tr>
+<tr><td><code>pulse.py</code></td><td>座位高亮与加/减分动画的唯一调度者</td></tr>
+<tr><td><code>autosave.py</code></td><td>自动保存：让保存不需要人操心，但失败一定看得见</td></tr>
+<tr><td><code>assets.py</code></td><td>运行时生成界面用的小图标</td></tr>
+<tr><td><code>qr.py</code></td><td>二维码：手机链接 → 点阵，交给界面去画</td></tr>
+<tr><td><code>media_decode.py</code></td><td>内置 ffmpeg 解视频：探测、时长/帧率、逐帧解码、PCM 音频</td></tr>
+<tr><td><code>media_probe.py</code></td><td>视频「能不能播」的预检与错误翻译</td></tr>
+<tr><td><code>transcode.py</code></td><td>把内置播放器解不开的视频转成 H.264/AAC 的 mp4</td></tr>
+<tr><td><code>sync_server.py</code></td><td>局域网同步服务端：HTTP REST（<code>/api/state</code> <code>/api/students</code> <code>/api/leaderboard</code>）</td></tr>
+<tr><td><code>sync_client.py</code></td><td>桌面端「各存副本、互相同步」的客户端</td></tr>
+<tr><td><code>sync_v27.py</code></td><td>v2.7 多端互联 HTTP 路由：配对 / 设备管理 / 导出 / 通知 / 附件</td></tr>
+<tr><td><code>tunnel.py</code></td><td>公网隧道（cloudflared）：异网访问</td></tr>
+<tr><td><code>domain_setup.py</code></td><td>一键部署固定域名：把固定隧道的几步串成流水线</td></tr>
+<tr><td><code>diagnose.py</code></td><td>多端连接体检：把「为什么连不上」拆成几条能自己看的结论</td></tr>
+</tbody></table>
+<h3>3.4 <code>app/ui/</code> —— 界面层</h3>
+<p>绝大多数文件的目标写在 docstring 里：<strong>1:1 复刻原版 HTML 的某个选择器</strong>。</p>
+<ul>
+<li><code>theme.py</code>：配色与尺寸，全部取自原版 <code>:root</code> 令牌与实测渲染值（唯一视觉常量来源）。</li>
+<li><code>main_window.py</code>：主窗口，复刻三段式骨架（topbar / board / bottombar）。</li>
+<li><code>modals.py</code>：通用模态壳（<code>.modal / .modal-head / .modal-body / .modal-foot</code>）。</li>
+<li><code>seat_map.py</code> / <code>seat_map_cell.py</code>：主界面座位表与座位格（112×66、圆角 12、底色 <code>#fbfcfe</code>）。</li>
+<li><code>stage.py</code> / <code>stage_seat_cell.py</code>：早读 / 午读全屏舞台与全屏座位格。</li>
+<li><code>leaderboard.py</code> / <code>history_view.py</code> / <code>lottery_view.py</code> / <code>manual_dialog.py</code>：排行榜、记录、抽奖、加减分弹窗。</li>
+<li><code>widgets/</code>：toast、通知浮层、流式布局、日历、学生选择器、启动动画、视频选择/播放。</li>
+<li><code>dialogs/</code>：设置、布局、奖品、导入导出、设备管理、更新日志、关于、自定义图标等。</li>
+</ul>
+<p><strong>媒体链路</strong>值得单独说：Windows 上 DirectShow 常常没有 H.264 解码器，所以</p>
+<p><code>widgets/ffmpeg_player.py</code> 用自带 ffmpeg 解码、Qt 自绘；<code>video_player.py</code> 在其上做</p>
+<p>「预览 / 试播 / 抽奖揭晓」三种播放形态，失败时必须说清原因，而不是黑屏。</p>
+<h3>3.5 <code>app/selftest/</code> —— 内置自检</h3>
+<p>给最终用户（老师）用的「体检」：<code>checks.py</code> 是每一条检查，<code>runner.py</code> 负责执行与汇总。</p>
+<p>覆盖数据目录可写、状态往返、备份可读、记分撤销往返、布局数学、定时器作用域、</p>
+<p>脉冲代际、磁盘空间、二维码、媒体后端、转码器、单实例等 12 项。</p>
+<h3>3.6 <code>app/main.py</code> —— 装配层</h3>
+<p>刻意只做三件事：加载数据、建主窗口、把退出清理收在一处。</p>
+<ul>
+<li>不在这里改业务数据（交给 <code>core</code> / <code>services</code>）；</li>
+<li>不在这里挂定时器（交给 <code>TimerRegistry</code>）；</li>
+<li>单实例：本地套接字 <code>classpoints-single-instance-8f3a</code>，重复启动会激活已有窗口后退出。</li>
+</ul>
+<h3>3.7 <code>班级积分系统.py</code> —— 入口</h3>
+<ul>
+<li>把源码根目录塞进 <code>sys.path</code>，支持直接 <code>python 班级积分系统.py</code>；</li>
+<li>打包成 <code>--noconsole</code> 后 <code>sys.stdout/stderr</code> 是 <code>None</code>，这里把它们接到</li>
+</ul>
+<p><code>%APPDATA%\班级积分系统\app.log</code>，否则槽里一个未捕获异常就会让进程 abort、闪退且无日志；</p>
+<ul>
+<li>未捕获异常统一落 <code>crash.log</code>，提示里带路径；</li>
+<li><code>--selftest</code> 直接在命令行跑自检。</li>
+</ul>
+<hr>
+<h2>4. 两条典型数据流</h2>
+<h3>4.1 一次「加分」</h3>
+<pre><code class="lang-">座位单击 (ui/stage.py · seat_map.py)
+      → services/voting.py        记一笔投票 / 找学生
+      → core/scoring.py           纯函数：改分、生成撤销条目
+      → core/state.py             标脏 + 通知监听者
+      → services/autosave.py      节流落盘
+      → core/storage.py           原子写 + 备份轮转
+      → services/pulse.py         座位高亮/动画（通过 TimerRegistry 延时回收）</code></pre>
+<p>撤消走同一条链的 <code>scoring.undo_entry(state, entry_id)</code>，撤销条目本身也是一条记录。</p>
+<h3>4.2 一次「早读舞台」</h3>
+<pre><code class="lang-">进入舞台 (ui/main_window.py)
+      → ui/stage.py · open_stage(source)
+      → services/voting.py · begin_session(state, source)
+      → 整表重建（只在进入时发生一次，避免每帧重建）
+      → 点击座位 → voting.tap(sid) → 同上「加分」链路
+退出 (close_stage)
+      → 先收定时器，再归零所有格子动画，最后发一行统计 toast</code></pre>
+<hr>
+<h2>5. 安装器（<code>installer/</code>）</h2>
+<p>安装器是<strong>独立的</strong> PyInstaller 程序，刻意不 import <code>app</code> 包——它要能安装一个</p>
+<p>还没被安装的程序。</p>
+<table><thead><tr><th>模块</th><th>职责</th></tr></thead><tbody>
+<tr><td><code>main.py</code></td><td>入口：带参数走命令行（<code>--silent</code> / <code>--version</code>），不带参数弹向导</td></tr>
+<tr><td><code>install_core.py</code></td><td>安装/卸载核心逻辑（纯 stdlib，不含 Qt，也不 import app）</td></tr>
+<tr><td><code>constants.py</code></td><td>共享常量（应用名、注册表项、安装目录约定等）</td></tr>
+<tr><td><code>bundle.py</code></td><td>资源定位：打包态读 PyInstaller 的 <code>_MEIPASS</code>，开发态读构建暂存目录</td></tr>
+<tr><td><code>winsys.py</code></td><td>Win32 交互：系统文件夹、磁盘空间、结束进程、打开目录（ctypes）</td></tr>
+<tr><td><code>win_shortcut.py</code></td><td>快捷方式：COM <code>IShellLinkW</code> / <code>IPersistFile</code> 建/删 <code>.lnk</code>，PowerShell 兜底</td></tr>
+<tr><td><code>build_payload.py</code></td><td><strong>构建期</strong>：把 onedir 产物压成 <code>payload.zip</code> 并写 <code>manifest.json</code></td></tr>
+<tr><td><code>uninstaller.py</code></td><td><code>Uninstall.exe</code> 入口：删程序文件 / 快捷方式 / HKCU 卸载登记，<strong>保留班级数据</strong></td></tr>
+<tr><td><code>ui/pages.py</code></td><td>四页：欢迎 → 选择目录 → 安装进度 → 完成</td></tr>
+<tr><td><code>ui/wizard.py</code></td><td>QWizard 主窗口：流程、按钮文案、安装态约束</td></tr>
+<tr><td><code>ui/worker.py</code></td><td>把安装逻辑放到后台线程，避免解压 100+ MB 时界面假死</td></tr>
+<tr><td><code>ui/style.py</code></td><td>统一观感（QSS + 字体）</td></tr>
+</tbody></table>
+<h3>5.1 为什么有 <code>build_payload</code></h3>
+<p>PyInstaller 的 <code>--add-data</code> 把 125 MB 的 onedir 目录直接塞进 onefile，启动时要解包成</p>
+<p>几千个小文件，冷启动很慢。所以构建期先压成单个 <code>payload.zip</code>，安装时用 Python</p>
+<p><code>zipfile</code> 解压（中文名按 UTF-8 处理）。<code>manifest.json</code> 记录版本、文件数、压缩前后</p>
+<p>字节数、sha256 与构建时间，安装器据此校验完整性。</p>
+<h3>5.2 卸载的边界</h3>
+<p>删程序文件、删快捷方式、删 HKCU 卸载登记；**班级数据目录（<code>%APPDATA%\班级积分系统</code>）</p>
+<p>一律保留**，并在卸载完成页告诉用户数据还在哪里。</p>
+<hr>
+<h2>6. 打包链（<code>packaging/</code>）</h2>
+<table><thead><tr><th>文件</th><th>作用</th></tr></thead><tbody>
+<tr><td><code>classpoints.spec</code></td><td>主程序，<strong>onedir</strong>（<code>app.exe</code> + <code>_internal/</code>）</td></tr>
+<tr><td><code>uninstaller.spec</code></td><td>卸载器，不打包 Qt（确认框走 <code>ctypes.windll.user32.MessageBoxW</code>），体积最小化</td></tr>
+<tr><td><code>installer.spec</code></td><td>安装器，<strong>onefile</strong>（<code>setup.exe</code>），datas 带 <code>payload.zip</code> / <code>manifest.json</code> / <code>Uninstall.exe</code> / <code>app.ico</code></td></tr>
+<tr><td><code>build.ps1</code></td><td>先打主程序 onedir，再打卸载器</td></tr>
+<tr><td><code>build_installer.ps1</code></td><td>调 <code>installer/build_payload.py</code> 生成 payload，再打 <code>setup.exe</code></td></tr>
+</tbody></table>
+<p>两个 <code>.ps1</code> <strong>必须 UTF-8 带 BOM</strong>（否则 PowerShell 5.1 会把中文读成乱码），</p>
+<p><code>_tools/ensure_bom.py</code> 负责自检与补齐。构建步骤与 manifest 字段见 <code>docs/BUILD.md</code>。</p>
+<hr>
+<h2>7. 怎么跑、怎么验</h2>
+<h3>7.1 直接跑</h3>
+<pre><code class="lang-bash">python 班级积分系统.py            # 启动界面
+python 班级积分系统.py --selftest # 跑内置自检</code></pre>
+<h3>7.2 重建校验（本工程的「验收线」）</h3>
+<p>本工程的源码是从 <code>recover/</code> 里的 .pyc 逐函数复原的，因此有一套字节码级校验：</p>
+<pre><code class="lang-bash">PY=/opt/pythons/cpython-3.14.8-linux-aarch64-gnu/bin/python3.14
+$PY tools/verify.py --all              # 主程序 78 个模块
+$PY tools/verify_installer.py --all    # 安装器 16 个模块</code></pre>
+<p>判定分两级：</p>
+<ol>
+<li><strong>结构一致（必需）</strong>：同一 <code>qualname</code> 的 code object 集合相同，指令序列</li>
+</ol>
+<p>（opname + 解析后的 argval）逐条相同，<code>co_names</code> / <code>co_varnames</code> / 参数个数一致</p>
+<p>—— 等价于「逻辑、常量、调用顺序、分支结构都一样」。</p>
+<ol>
+<li><strong>字节一致（加分）</strong>：<code>co_code</code> 完全相同。</li>
+</ol>
+<p>当前状态：主程序 <strong>78/78</strong>（26 个字节一致、52 个结构一致）；安装器 <strong>16/16</strong></p>
+<p>（10 个字节一致、6 个结构一致）——两侧全部通过，安装器与主程序处在同一还原标准。</p>
+<h3>7.3 Windows 上重建安装包</h3>
+<pre><code class="lang-powershell">powershell -ExecutionPolicy Bypass -File packaging\build.ps1
+powershell -ExecutionPolicy Bypass -File packaging\build_installer.ps1</code></pre>
+<p>产物：<code>dist\班级积分系统\</code>（onedir）、<code>dist\Uninstall.exe</code>、<code>dist\setup.exe</code>。</p>
+<hr>
+<h2>8. 阅读建议</h2>
+<p>按这个顺序读，最省力：</p>
+<ol>
+<li><code>app/version.py</code> → <code>app/core/models.py</code>（先知道数据长什么样）；</li>
+<li><code>app/core/state.py</code> → <code>app/core/storage.py</code>（数据怎么存、怎么通知）；</li>
+<li><code>app/services/voting.py</code> + <code>app/core/scoring.py</code>（最核心的一条业务链）；</li>
+<li><code>app/ui/main_window.py</code> → <code>app/ui/seat_map.py</code>（界面怎么搭起来）；</li>
+<li><code>app/services/timer_registry.py</code> + <code>app/services/pulse.py</code>（延迟动作与动画）；</li>
+<li>需要改视觉时只看 <code>app/ui/theme.py</code>；需要改导出时看 <code>app/io/</code>；</li>
+<li>安装器从 <code>installer/install_core.py</code> 读起，再看 <code>ui/pages.py</code>。</li>
+</ol>
+<hr>
+<p>*本文件由复原工程生成，与 <code>docs/BUILD.md</code>（打包细节）、</p>
+<p><code>tools/HOWTO-REBUILD.md</code>（复原方法）、<code>tools/HOWTO-INSTALLER.md</code>（安装器复原要点）配套阅读。*</p>
+</body>
+</html>

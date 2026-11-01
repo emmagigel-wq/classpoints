@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build outputs
+build/
+dist/
+*.spec.bak
+
+# Local/runtime data and secrets
+.env
+.env.*
+*.token
+*.log
+data/
+userdata/
+user_data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Third-party executables are distributed separately
+assets/ffmpeg.exe
+cloudflared.exe
