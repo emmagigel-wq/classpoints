@@ -31,8 +31,12 @@ jobs:
           if (-not (Test-Path (Join-Path $sourceRoot "packaging/build_installer.ps1"))) {
             throw "The uploaded ZIP does not contain the expected ClassPoints source tree."
           }
+          $PSNativeCommandUseErrorActionPreference = $false
           robocopy $sourceRoot $env:GITHUB_WORKSPACE /E /COPY:DAT /R:2 /W:2 /XD .git /XF build-windows.yml
-          if ($LASTEXITCODE -gt 7) { throw "Source extraction copy failed: $LASTEXITCODE" }
+          $copyExit = $LASTEXITCODE
+          if ($copyExit -gt 7) { throw "Source extraction copy failed: $copyExit" }
+          # Robocopy uses exit codes 1-7 for successful copies/changes.
+          $global:LASTEXITCODE = 0
 
       - name: Publish unpacked source to repository
         shell: pwsh
