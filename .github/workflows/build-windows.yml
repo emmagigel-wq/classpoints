@@ -49,12 +49,11 @@ jobs:
             git push origin HEAD:main
           }
 
-      - name: Set up 64-bit Python 3.14
+      - name: Set up 64-bit Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.12"
           architecture: "x64"
-          cache: "pip"
 
       - name: Install build dependencies
         shell: pwsh
